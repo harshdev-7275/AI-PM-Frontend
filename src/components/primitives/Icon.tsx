@@ -15,7 +15,6 @@ import {
   Zap,
 } from 'lucide-react'
 
-// ─── Lucide registry ──────────────────────────────────────────────────────────
 const lucide = {
   'arrow-right': ArrowRight,
   building: Building2,
@@ -32,7 +31,6 @@ const lucide = {
   zap: Zap,
 } satisfies Record<string, LucideIcon>
 
-// ─── Brand SVG registry ───────────────────────────────────────────────────────
 function GoogleSvg({ size }: { size: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 18 18" fill="none" aria-label="Google">
@@ -60,18 +58,17 @@ const brand = {
   microsoft: MicrosoftSvg,
 } satisfies Record<string, React.FC<{ size: number }>>
 
-// ─── Types ────────────────────────────────────────────────────────────────────
 type LucideIconName = keyof typeof lucide
 type BrandIconName = keyof typeof brand
 export type IconName = LucideIconName | BrandIconName
 
-// ─── Component ────────────────────────────────────────────────────────────────
-interface IconProps {
+export interface IconProps {
   name: IconName
   size?: number
   className?: string
 }
 
+// Usage: <Icon name="mail" size={16} className="text-white/30" />
 export function Icon({ name, size = 16, className }: IconProps) {
   if (name in brand) {
     const BrandIcon = brand[name as BrandIconName]

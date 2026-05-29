@@ -20,11 +20,16 @@
     "noEmit": true,
     "jsx": "react-jsx",
 
-    /* Linting */
+    /* Strict */
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "erasableSyntaxOnly": true,
-    "noFallthroughCasesInSwitch": true
+    "forceConsistentCasingInFileNames": true
   },
   "include": ["src"]
 }

@@ -6,6 +6,14 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
+  /* Brand tokens — use these in components instead of raw Tailwind literals */
+  --color-brand-primary: oklch(52% 0.26 293);     /* violet-600 equivalent */
+  --color-brand-primary-hover: oklch(46% 0.26 293); /* violet-700 equivalent */
+  --color-brand-accent: oklch(72% 0.18 293);      /* violet-400 equivalent */
+  --color-brand-accent-hover: oklch(78% 0.16 293); /* violet-300 equivalent */
+  --color-auth-bg: oklch(10% 0 0);                /* #09090b */
+  --color-auth-panel: oklch(11% 0.01 293);        /* #0d0d15 */
+
   --text: #6b6375;
   --text-h: #08060d;
   --bg: #fff;

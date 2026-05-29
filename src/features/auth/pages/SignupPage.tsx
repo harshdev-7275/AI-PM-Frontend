@@ -10,8 +10,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Icon } from '@/components/ui/icon'
-import AuthLayout from './AuthLayout'
+import { Icon } from '@/components/primitives/Icon'
+import AuthLayout from '@/features/auth/components/AuthLayout'
 
 const TEAM_SIZES = ['Just me', '2–10', '11–50', '51–200', '201–500', '500+']
 const ROLES = ['Engineer', 'Designer', 'Product Manager', 'Marketer', 'Founder', 'Other']
