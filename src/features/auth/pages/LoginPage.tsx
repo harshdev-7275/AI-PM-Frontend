@@ -4,19 +4,28 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Icon } from '@/components/primitives/Icon'
 import AuthLayout from '@/features/auth/components/AuthLayout'
+import { useAuth } from '@/hooks/useAuth'
 
 export default function LoginPage() {
   const navigate = useNavigate()
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [loading, setLoading] = useState(false)
+  const { login } = useAuth()
+  const [email, setEmail]           = useState('')
+  const [password, setPassword]     = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError]           = useState('')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setLoading(true)
-    await new Promise((r) => setTimeout(r, 800))
-    setLoading(false)
-    navigate('/')
+    setError('')
+    setIsSubmitting(true)
+    try {
+      await login(email, password)
+      navigate('/dashboard')
+    } catch {
+      setError('Invalid email or password')
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -78,12 +87,18 @@ export default function LoginPage() {
             </div>
           </div>
 
+          {error && (
+            <p role="alert" className="text-red-400 text-sm text-center">
+              {error}
+            </p>
+          )}
+
           <Button
             type="submit"
-            disabled={loading}
+            disabled={isSubmitting}
             className="w-full bg-violet-600 hover:bg-violet-700 text-white border-0 mt-1 gap-2"
           >
-            {loading ? (
+            {isSubmitting ? (
               <>
                 <Icon name="loader" size={16} className="animate-spin" /> Signing in…
               </>
