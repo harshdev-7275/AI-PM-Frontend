@@ -32,13 +32,7 @@ export default function LoginPage() {
     <AuthLayout>
       <div className="w-full max-w-sm flex flex-col items-center gap-6">
 
-        {/* Logo */}
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-violet-600 flex items-center justify-center">
-            <Icon name="zap" size={20} className="text-white fill-white" />
-          </div>
-          <h1 className="text-white text-2xl font-semibold tracking-tight">Welcome back</h1>
-        </div>
+        <h1 className="text-white text-2xl font-semibold tracking-tight">Welcome back</h1>
 
         {/* Social auth */}
         <div className="w-full flex flex-col gap-2">
@@ -60,7 +54,7 @@ export default function LoginPage() {
               onChange={(e) => setEmail(e.target.value)}
               required
               autoComplete="email"
-              className="pl-10 bg-white/[0.05] border-white/10 text-white placeholder:text-white/25 focus-visible:ring-violet-500/50 focus-visible:border-violet-500/50"
+              className="pl-10 bg-white/[0.05] border-white/10 text-white placeholder:text-white/25 focus-visible:ring-brand-primary/50 focus-visible:border-brand-primary/50"
             />
           </div>
 
@@ -68,7 +62,7 @@ export default function LoginPage() {
             <div className="flex justify-end">
               <Link
                 to="/forgot-password"
-                className="text-xs text-violet-400 hover:text-violet-300 transition-colors"
+                className="text-xs text-brand-accent hover:text-brand-accent-hover transition-colors"
               >
                 Forgot password?
               </Link>
@@ -82,7 +76,7 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 autoComplete="current-password"
-                className="pl-10 bg-white/[0.05] border-white/10 text-white placeholder:text-white/25 focus-visible:ring-violet-500/50 focus-visible:border-violet-500/50"
+                className="pl-10 bg-white/[0.05] border-white/10 text-white placeholder:text-white/25 focus-visible:ring-brand-primary/50 focus-visible:border-brand-primary/50"
               />
             </div>
           </div>
@@ -96,7 +90,7 @@ export default function LoginPage() {
           <Button
             type="submit"
             disabled={isSubmitting}
-            className="w-full bg-violet-600 hover:bg-violet-700 text-white border-0 mt-1 gap-2"
+            className="w-full bg-brand-primary hover:bg-brand-primary-hover text-white border-0 mt-1 gap-2"
           >
             {isSubmitting ? (
               <>
@@ -110,7 +104,7 @@ export default function LoginPage() {
 
         <p className="text-white/35 text-sm">
           No account?{' '}
-          <Link to="/signup" className="text-violet-400 hover:text-violet-300 transition-colors">
+          <Link to="/signup" className="text-brand-accent hover:text-brand-accent-hover transition-colors">
             Sign up free
           </Link>
         </p>

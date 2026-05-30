@@ -59,14 +59,14 @@ function StepDots({ current, total }: { current: number; total: number }) {
           <div
             className={`w-2 h-2 rounded-full transition-colors ${
               i < current
-                ? 'bg-violet-500'
+                ? 'bg-brand-accent'
                 : i === current
-                  ? 'bg-violet-600'
+                  ? 'bg-brand-primary'
                   : 'bg-white/15'
             }`}
           />
           {i < total - 1 && (
-            <div className={`w-6 h-px transition-colors ${i < current ? 'bg-violet-500/60' : 'bg-white/10'}`} />
+            <div className={`w-6 h-px transition-colors ${i < current ? 'bg-brand-accent/60' : 'bg-white/10'}`} />
           )}
         </div>
       ))}
@@ -87,11 +87,7 @@ function StepHeader({
 }) {
   return (
     <div className="flex flex-col items-center gap-2">
-      <div className="w-9 h-9 rounded-xl bg-violet-600/20 border border-violet-500/30 flex items-center justify-center">
-        <Icon name="hexagon" size={18} className="text-violet-400" />
-      </div>
       <div className="text-center">
-        <p className="text-violet-400 text-xs font-medium">Vortex AI</p>
         <h1 className="text-white text-xl font-semibold tracking-tight whitespace-nowrap">{title}</h1>
         {subtitle && <p className="text-white/40 text-xs mt-0.5">{subtitle}</p>}
       </div>
@@ -135,7 +131,7 @@ function Step1({ name, email, password, error, onChange, onNext }: Step1Props) {
             onChange={onChange('name')}
             required
             autoComplete="name"
-            className="bg-white/[0.05] border-white/10 text-white placeholder:text-white/20 focus-visible:ring-violet-500/50 focus-visible:border-violet-500/50"
+            className="bg-white/[0.05] border-white/10 text-white placeholder:text-white/20 focus-visible:ring-brand-primary/50 focus-visible:border-brand-primary/50"
           />
         </div>
         <div className="flex flex-col gap-1">
@@ -147,7 +143,7 @@ function Step1({ name, email, password, error, onChange, onNext }: Step1Props) {
             onChange={onChange('email')}
             required
             autoComplete="email"
-            className="bg-white/[0.05] border-white/10 text-white placeholder:text-white/20 focus-visible:ring-violet-500/50 focus-visible:border-violet-500/50"
+            className="bg-white/[0.05] border-white/10 text-white placeholder:text-white/20 focus-visible:ring-brand-primary/50 focus-visible:border-brand-primary/50"
           />
         </div>
         <div className="flex flex-col gap-1">
@@ -159,7 +155,7 @@ function Step1({ name, email, password, error, onChange, onNext }: Step1Props) {
             onChange={onChange('password')}
             required
             autoComplete="new-password"
-            className="bg-white/[0.05] border-white/10 text-white placeholder:text-white/20 focus-visible:ring-violet-500/50 focus-visible:border-violet-500/50"
+            className="bg-white/[0.05] border-white/10 text-white placeholder:text-white/20 focus-visible:ring-brand-primary/50 focus-visible:border-brand-primary/50"
           />
         </div>
 
@@ -169,14 +165,14 @@ function Step1({ name, email, password, error, onChange, onNext }: Step1Props) {
           </p>
         )}
 
-        <Button type="submit" className="w-full bg-violet-600 hover:bg-violet-700 text-white border-0 gap-2">
+        <Button type="submit" className="w-full bg-brand-primary hover:bg-brand-primary-hover text-white border-0 gap-2">
           Continue <Icon name="arrow-right" size={16} />
         </Button>
       </form>
 
       <p className="text-white/35 text-sm">
         Already have an account?{' '}
-        <Link to="/login" className="text-violet-400 hover:text-violet-300 transition-colors">
+        <Link to="/login" className="text-brand-accent hover:text-brand-accent-hover transition-colors">
           Log in
         </Link>
       </p>
@@ -256,13 +252,13 @@ function Step3({ error, isSubmitting, onSubmit, onBack }: Step3Props) {
             placeholder="Acme Corp"
             value={company}
             onChange={(e) => handleCompany(e.target.value)}
-            className="bg-white/[0.05] border-white/10 text-white placeholder:text-white/20 focus-visible:ring-violet-500/50 focus-visible:border-violet-500/50"
+            className="bg-white/[0.05] border-white/10 text-white placeholder:text-white/20 focus-visible:ring-brand-primary/50 focus-visible:border-brand-primary/50"
           />
         </div>
 
         <div className="flex flex-col gap-1">
           <Label className="text-white/60 text-xs">Workspace URL</Label>
-          <div className="flex rounded-lg overflow-hidden border border-white/10 focus-within:border-violet-500/50 focus-within:ring-1 focus-within:ring-violet-500/50 transition-colors">
+          <div className="flex rounded-lg overflow-hidden border border-white/10 focus-within:border-brand-primary/50 focus-within:ring-1 focus-within:ring-brand-primary/50 transition-colors">
             <input
               type="text"
               value={slug}
@@ -271,7 +267,7 @@ function Step3({ error, isSubmitting, onSubmit, onBack }: Step3Props) {
               className="flex-1 bg-white/[0.05] px-3 py-2 text-white text-sm placeholder:text-white/20 outline-none min-w-0"
             />
             <span className="flex items-center px-3 bg-white/[0.03] border-l border-white/10 text-white/35 text-sm whitespace-nowrap">
-              .vortex.ai
+              .planiqo.com
             </span>
           </div>
         </div>
@@ -279,12 +275,12 @@ function Step3({ error, isSubmitting, onSubmit, onBack }: Step3Props) {
         <div className="flex flex-col gap-1">
           <Label className="text-white/60 text-xs">Team size</Label>
           <Select value={teamSize} onValueChange={setTeamSize}>
-            <SelectTrigger className="bg-white/[0.05] border-white/10 text-white focus:ring-violet-500/50 data-[placeholder]:text-white/25">
+            <SelectTrigger className="bg-white/[0.05] border-white/10 text-white focus:ring-brand-primary/50 data-[placeholder]:text-white/25">
               <SelectValue placeholder="Select size" />
             </SelectTrigger>
             <SelectContent className="bg-zinc-900 border-white/10 text-white">
               {TEAM_SIZES.map((s) => (
-                <SelectItem key={s} value={s} className="focus:bg-violet-600/20 focus:text-white">
+                <SelectItem key={s} value={s} className="focus:bg-brand-primary/20 focus:text-white">
                   {s}
                 </SelectItem>
               ))}
@@ -313,7 +309,7 @@ function Step3({ error, isSubmitting, onSubmit, onBack }: Step3Props) {
         <Button
           type="submit"
           disabled={isSubmitting}
-          className="w-full bg-violet-600 hover:bg-violet-700 text-white border-0 gap-2"
+          className="w-full bg-brand-primary hover:bg-brand-primary-hover text-white border-0 gap-2"
         >
           {isSubmitting ? (
             <>
