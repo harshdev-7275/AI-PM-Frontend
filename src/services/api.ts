@@ -3,7 +3,7 @@ import type { InternalAxiosRequestConfig } from 'axios'
 import { z } from 'zod'
 import { env } from '@/lib/env'
 import { useAuthStore } from '@/store/useAuthStore'
-import type { AuthResponse, User } from '@/types'
+import type { AuthResponse, User, Org, Project } from '@/types'
 
 export const api = axios.create({
   baseURL: env.VITE_API_BASE_URL,
@@ -40,9 +40,44 @@ const LogoutResponseSchema = z.object({
   message: z.string(),
 })
 
+const ProjectSchema = z.object({
+  id:          z.string().uuid(),
+  orgId:       z.string().uuid(),
+  name:        z.string(),
+  key:         z.string(),
+  description: z.string().nullable(),
+  icon:        z.string().nullable(),
+  color:       z.string().nullable(),
+  isArchived:  z.boolean(),
+  createdBy:   z.string().uuid(),
+  createdAt:   z.string(),
+})
+
+const OrgSchema = z.object({
+  id:        z.string().uuid(),
+  name:      z.string(),
+  slug:      z.string(),
+  logoUrl:   z.string().nullable(),
+  plan:      z.string(),
+  isActive:  z.boolean(),
+  createdAt: z.string(),
+})
+
 // =============================================================================
 // TOKEN REFRESH INTERCEPTOR
 // =============================================================================
+
+// Attach the stored access token to every outgoing request automatically.
+// Functions like createOrg/getUserOrgs that pass the token explicitly (called
+// right after register before the store is populated) will override this header
+// via their own config.headers — axios merges headers with the explicit value winning.
+api.interceptors.request.use((config) => {
+  const token = useAuthStore.getState().accessToken
+  if (token && !config.headers['Authorization']) {
+    config.headers['Authorization'] = `Bearer ${token}`
+  }
+  return config
+})
 
 // Extends axios config to track whether a request has already been retried.
 // `as RetryableConfig` is used at the axios boundary where types cannot be
@@ -161,4 +196,47 @@ export const getMe = async (accessToken: string): Promise<User> => {
     headers: { Authorization: `Bearer ${accessToken}` },
   })
   return UserSchema.parse(res.data)
+}
+
+// =============================================================================
+// ORGS
+// =============================================================================
+
+export const createOrg = async (
+  name:        string,
+  slug:        string,
+  accessToken: string,
+): Promise<Org> => {
+  const res = await api.post('/orgs', { name, slug }, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  })
+  return OrgSchema.parse(res.data)
+}
+
+export const getUserOrgs = async (accessToken: string): Promise<Org[]> => {
+  const res = await api.get('/orgs/me', {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  })
+  return z.array(OrgSchema).parse(res.data)
+}
+
+// =============================================================================
+// PROJECTS
+// =============================================================================
+
+export const getProjects = async (slug: string): Promise<Project[]> => {
+  const res = await api.get(`/orgs/${slug}/projects`)
+  return z.array(ProjectSchema).parse(res.data)
+}
+
+export const createProject = async (
+  slug:         string,
+  name:         string,
+  key:          string,
+  description?: string,
+  icon?:        string,
+  color?:       string,
+): Promise<Project> => {
+  const res = await api.post(`/orgs/${slug}/projects`, { name, key, description, icon, color })
+  return ProjectSchema.parse(res.data)
 }

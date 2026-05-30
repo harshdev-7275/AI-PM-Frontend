@@ -16,6 +16,16 @@ export const mockAuthResponse = {
   expiresIn:   900,
 }
 
+export const mockOrg = {
+  id:        '456e7890-e89b-12d3-a456-426614174000',
+  name:      'Test Org',
+  slug:      'test-org',
+  logoUrl:   null,
+  plan:      'starter',
+  isActive:  true,
+  createdAt: '2026-01-01T00:00:00.000Z',
+}
+
 export const handlers = [
   http.post('http://localhost:4000/auth/login', () =>
     HttpResponse.json(mockAuthResponse)
@@ -43,4 +53,12 @@ export const handlers = [
     }
     return HttpResponse.json(mockUser)
   }),
+
+  http.post('http://localhost:4000/orgs', () =>
+    HttpResponse.json(mockOrg, { status: 201 })
+  ),
+
+  http.get('http://localhost:4000/orgs/me', () =>
+    HttpResponse.json([mockOrg])
+  ),
 ]

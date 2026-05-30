@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
@@ -7,6 +7,12 @@ import { server } from '../../../../test/mocks/server'
 import { mockAuthResponse } from '../../../../test/mocks/handlers'
 import { useAuthStore } from '@/store/useAuthStore'
 import LoginPage from './LoginPage'
+
+vi.mock('sonner', () => ({
+  toast: { success: vi.fn(), error: vi.fn() },
+}))
+
+import { toast } from 'sonner'
 
 function renderLoginPage() {
   return render(
@@ -20,12 +26,8 @@ function renderLoginPage() {
 }
 
 beforeEach(() => {
-  useAuthStore.setState({
-    user:            null,
-    accessToken:     null,
-    isLoading:       false,
-    isAuthenticated: false,
-  })
+  useAuthStore.setState({ user: null, accessToken: null, isLoading: false, isAuthenticated: false })
+  vi.clearAllMocks()
 })
 
 describe('LoginPage', () => {
@@ -53,7 +55,7 @@ describe('LoginPage', () => {
     })
   })
 
-  it('shows an error message when credentials are invalid', async () => {
+  it('shows a toast error when credentials are invalid', async () => {
     server.use(
       http.post('http://localhost:4000/auth/login', () =>
         HttpResponse.json(
@@ -71,7 +73,7 @@ describe('LoginPage', () => {
     await user.click(screen.getByRole('button', { name: 'Sign in' }))
 
     await waitFor(() => {
-      expect(screen.getByRole('alert')).toHaveTextContent('Invalid email or password')
+      expect(toast.error).toHaveBeenCalledWith('Invalid email or password')
     })
   })
 
@@ -95,7 +97,7 @@ describe('LoginPage', () => {
     expect(button).toBeDisabled()
   })
 
-  it('clears error message when the user submits again successfully', async () => {
+  it('shows a success toast and navigates away after retry succeeds', async () => {
     // First attempt fails
     server.use(
       http.post('http://localhost:4000/auth/login', () =>
@@ -114,10 +116,10 @@ describe('LoginPage', () => {
     await user.click(screen.getByRole('button', { name: 'Sign in' }))
 
     await waitFor(() => {
-      expect(screen.getByRole('alert')).toBeInTheDocument()
+      expect(toast.error).toHaveBeenCalledWith('Invalid email or password')
     })
 
-    // Restore success for the second attempt
+    // Restore success handler for second attempt
     server.use(
       http.post('http://localhost:4000/auth/login', () =>
         HttpResponse.json(mockAuthResponse)
@@ -126,9 +128,8 @@ describe('LoginPage', () => {
 
     await user.click(screen.getByRole('button', { name: 'Sign in' }))
 
-    // Navigated away — error is gone
     await waitFor(() => {
-      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+      expect(screen.getByText('dashboard page')).toBeInTheDocument()
     })
   })
 })

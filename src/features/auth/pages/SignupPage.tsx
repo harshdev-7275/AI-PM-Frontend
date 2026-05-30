@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -15,6 +15,7 @@ import {
 import { Icon } from '@/components/primitives/Icon'
 import AuthLayout from '@/features/auth/components/AuthLayout'
 import { useAuth } from '@/hooks/useAuth'
+import { useOrg } from '@/hooks/useOrg'
 
 const TEAM_SIZES = ['Just me', '2–10', '11–50', '51–200', '201–500', '500+']
 const ROLES      = ['Engineer', 'Designer', 'Product Manager', 'Marketer', 'Founder', 'Other']
@@ -26,12 +27,6 @@ const ROLE_TO_JOB_TITLE: Record<string, string> = {
   'Marketer':        'marketer',
   'Founder':         'founder',
   'Other':           'other',
-}
-
-const pageVariants = {
-  initial: { opacity: 0, x: 50 },
-  animate: { opacity: 1, x: 0 },
-  exit: { opacity: 0, x: -50 },
 }
 
 const containerVariants = {
@@ -256,19 +251,21 @@ function Step2({ onRoleSelect, onBack }: Step2Props) {
 // ─── Step 3: Your Organization ────────────────────────────────────────────────
 
 interface Step3Props {
-  isSubmitting: boolean
-  onSubmit:     (e: React.FormEvent) => void
-  onBack:       () => void
+  isSubmitting:    boolean
+  orgName:         string
+  orgSlug:         string
+  onOrgNameChange: (val: string) => void
+  onOrgSlugChange: (val: string) => void
+  onSubmit:        (e: React.FormEvent) => void
+  onBack:          () => void
 }
 
-function Step3({ isSubmitting, onSubmit, onBack }: Step3Props) {
-  const [company,  setCompany]  = useState('')
-  const [slug,     setSlug]     = useState('')
+function Step3({ isSubmitting, orgName, orgSlug, onOrgNameChange, onOrgSlugChange, onSubmit, onBack }: Step3Props) {
   const [teamSize, setTeamSize] = useState('')
 
   const handleCompany = (val: string) => {
-    setCompany(val)
-    setSlug(val.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''))
+    onOrgNameChange(val)
+    onOrgSlugChange(val.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''))
   }
 
   return (
@@ -288,7 +285,7 @@ function Step3({ isSubmitting, onSubmit, onBack }: Step3Props) {
           <Label className="dark:text-white/60 text-gray-700 text-xs">Company name</Label>
           <Input
             placeholder="Acme Corp"
-            value={company}
+            value={orgName}
             onChange={(e) => handleCompany(e.target.value)}
             className="dark:bg-white/[0.05] bg-gray-100 dark:border-white/10 border-gray-300 dark:text-white text-gray-900 dark:placeholder:text-white/20 placeholder:text-gray-500 focus-visible:ring-brand-primary/50 focus-visible:border-brand-primary/50"
           />
@@ -299,8 +296,8 @@ function Step3({ isSubmitting, onSubmit, onBack }: Step3Props) {
           <div className="flex rounded-lg overflow-hidden border dark:border-white/10 border-gray-300 focus-within:border-brand-primary/50 focus-within:ring-1 focus-within:ring-brand-primary/50 transition-colors">
             <input
               type="text"
-              value={slug}
-              onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+              value={orgSlug}
+              onChange={(e) => onOrgSlugChange(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
               placeholder="acme"
               className="flex-1 dark:bg-white/[0.05] bg-gray-100 px-3 py-2 dark:text-white text-gray-900 text-sm dark:placeholder:text-white/20 placeholder:text-gray-500 outline-none min-w-0"
             />
@@ -387,8 +384,11 @@ interface FormData {
 export default function SignupPage() {
   const navigate = useNavigate()
   const { register } = useAuth()
+  const { createOrg } = useOrg()
 
-  const [form, setForm]             = useState<FormData>({ name: '', email: '', password: '', jobTitle: '' })
+  const [form, setForm]               = useState<FormData>({ name: '', email: '', password: '', jobTitle: '' })
+  const [orgName, setOrgName]         = useState('')
+  const [orgSlug, setOrgSlug]         = useState('')
   const [currentStep, setCurrentStep] = useState(1)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -414,9 +414,15 @@ export default function SignupPage() {
     e.preventDefault()
     setIsSubmitting(true)
     try {
+      // Step 1 — create user account, stores token in auth store
       await register(form.name, form.email, form.password, form.jobTitle)
+
+      // Step 2 — create org using the token now in the auth store
+      const org = await createOrg(orgName, orgSlug)
+
+      // Step 3 — navigate into the new org's dashboard
       toast.success('Workspace created successfully!')
-      navigate('/dashboard')
+      navigate(`/${org.slug}/dashboard`)
     } catch {
       toast.error('Something went wrong. Please try again.')
     } finally {
@@ -426,57 +432,36 @@ export default function SignupPage() {
 
   return (
     <AuthLayout>
-      <AnimatePresence mode="wait">
+      <>
         {currentStep === 1 && (
-          <motion.div
-            key="step-1"
-            variants={pageVariants}
-            initial="initial"
-            animate="animate"
-            exit="exit"
-            transition={{ duration: 0.3 }}
-          >
-            <Step1
-              name={form.name}
-              email={form.email}
-              password={form.password}
-              onChange={updateField}
-              onNext={handleStep1Continue}
-            />
-          </motion.div>
+          <Step1
+            name={form.name}
+            email={form.email}
+            password={form.password}
+            onChange={updateField}
+            onNext={handleStep1Continue}
+          />
         )}
         {currentStep === 2 && (
-          <motion.div
-            key="step-2"
-            variants={pageVariants}
-            initial="initial"
-            animate="animate"
-            exit="exit"
-            transition={{ duration: 0.3 }}
-          >
-            <Step2
-              onRoleSelect={handleRoleSelect}
-              onBack={() => setCurrentStep(1)}
-            />
-          </motion.div>
+          <Step2
+            onRoleSelect={handleRoleSelect}
+            onBack={() => setCurrentStep(1)}
+          />
         )}
         {currentStep === 3 && (
-          <motion.div
-            key="step-3"
-            variants={pageVariants}
-            initial="initial"
-            animate="animate"
-            exit="exit"
-            transition={{ duration: 0.3 }}
-          >
+          <div>
             <Step3
               isSubmitting={isSubmitting}
+              orgName={orgName}
+              orgSlug={orgSlug}
+              onOrgNameChange={setOrgName}
+              onOrgSlugChange={setOrgSlug}
               onSubmit={handleFinalSubmit}
               onBack={() => setCurrentStep(2)}
             />
-          </motion.div>
+          </div>
         )}
-      </AnimatePresence>
+      </>
     </AuthLayout>
   )
 }

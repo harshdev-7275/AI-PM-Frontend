@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type { User } from '@/types'
+import { useOrgStore } from '@/store/useOrgStore'
 
 interface AuthState {
   user:            User | null
@@ -26,6 +27,8 @@ export const useAuthStore = create<AuthState & AuthActions>((set) => ({
   setAccessToken: (accessToken) =>
     set({ accessToken }),
 
-  clearAuth: () =>
-    set({ user: null, accessToken: null, isAuthenticated: false, isLoading: false }),
+  clearAuth: () => {
+    useOrgStore.getState().clearOrgs()
+    set({ user: null, accessToken: null, isAuthenticated: false, isLoading: false })
+  },
 }))

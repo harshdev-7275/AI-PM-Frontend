@@ -1,31 +1,33 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { http, HttpResponse } from 'msw'
 import { server } from '../../../../test/mocks/server'
-import { mockAuthResponse } from '../../../../test/mocks/handlers'
+import { mockAuthResponse, mockOrg } from '../../../../test/mocks/handlers'
 import { useAuthStore } from '@/store/useAuthStore'
 import SignupPage from './SignupPage'
+
+vi.mock('sonner', () => ({
+  toast: { success: vi.fn(), error: vi.fn() },
+}))
+
+import { toast } from 'sonner'
 
 function renderSignupPage() {
   return render(
     <MemoryRouter initialEntries={['/signup']}>
       <Routes>
-        <Route path="/signup"    element={<SignupPage />} />
-        <Route path="/dashboard" element={<div>dashboard page</div>} />
+        <Route path="/signup"          element={<SignupPage />} />
+        <Route path="/:slug/dashboard" element={<div>dashboard page</div>} />
       </Routes>
     </MemoryRouter>
   )
 }
 
 beforeEach(() => {
-  useAuthStore.setState({
-    user:            null,
-    accessToken:     null,
-    isLoading:       false,
-    isAuthenticated: false,
-  })
+  useAuthStore.setState({ user: null, accessToken: null, isLoading: false, isAuthenticated: false })
+  vi.clearAllMocks()
 })
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -45,7 +47,7 @@ async function goToStep3(user: ReturnType<typeof userEvent.setup>) {
 // ─── Step 1 ───────────────────────────────────────────────────────────────────
 
 describe('Step 1 — Account details', () => {
-  it('shows a validation error when password is less than 8 characters', async () => {
+  it('shows a toast error when password is less than 8 characters', async () => {
     const user = userEvent.setup()
     renderSignupPage()
 
@@ -54,7 +56,7 @@ describe('Step 1 — Account details', () => {
     await user.type(screen.getByPlaceholderText('••••••••'), 'short')
     await user.click(screen.getByRole('button', { name: /^continue$/i }))
 
-    expect(screen.getByRole('alert')).toHaveTextContent(/at least 8 characters/i)
+    expect(toast.error).toHaveBeenCalledWith('Password must be at least 8 characters')
   })
 
   it('does not advance when validation fails', async () => {
@@ -64,7 +66,6 @@ describe('Step 1 — Account details', () => {
     await user.type(screen.getByPlaceholderText('••••••••'), 'short')
     await user.click(screen.getByRole('button', { name: /^continue$/i }))
 
-    // Still on step 1
     expect(screen.getByPlaceholderText('Jane Doe')).toBeInTheDocument()
   })
 
@@ -74,7 +75,6 @@ describe('Step 1 — Account details', () => {
 
     await fillStep1AndContinue(user)
 
-    // Step 2 role grid is visible
     expect(screen.getByRole('button', { name: 'Engineer' })).toBeInTheDocument()
   })
 })
@@ -106,11 +106,14 @@ describe('Step 2 — Role selection', () => {
 // ─── Step 3 ───────────────────────────────────────────────────────────────────
 
 describe('Step 3 — Organization details', () => {
-  it('calls register and navigates to /dashboard on success', async () => {
+  it('registers, creates org, and navigates to the org dashboard on success', async () => {
     server.use(
       http.post('http://localhost:4000/auth/register', () =>
         HttpResponse.json(mockAuthResponse, { status: 201 })
-      )
+      ),
+      http.post('http://localhost:4000/orgs', () =>
+        HttpResponse.json(mockOrg, { status: 201 })
+      ),
     )
 
     const user = userEvent.setup()
@@ -124,7 +127,7 @@ describe('Step 3 — Organization details', () => {
     })
   })
 
-  it('shows an error message when registration fails', async () => {
+  it('shows a toast error when registration fails', async () => {
     server.use(
       http.post('http://localhost:4000/auth/register', () =>
         HttpResponse.json(
@@ -141,7 +144,28 @@ describe('Step 3 — Organization details', () => {
     await user.click(screen.getByRole('button', { name: /create workspace/i }))
 
     await waitFor(() => {
-      expect(screen.getByRole('alert')).toBeInTheDocument()
+      expect(toast.error).toHaveBeenCalledWith('Something went wrong. Please try again.')
+    })
+  })
+
+  it('shows a toast error when org creation fails', async () => {
+    server.use(
+      http.post('http://localhost:4000/auth/register', () =>
+        HttpResponse.json(mockAuthResponse, { status: 201 })
+      ),
+      http.post('http://localhost:4000/orgs', () =>
+        HttpResponse.json({ error: 'SLUG_TAKEN', message: 'Slug already taken' }, { status: 409 })
+      ),
+    )
+
+    const user = userEvent.setup()
+    renderSignupPage()
+
+    await goToStep3(user)
+    await user.click(screen.getByRole('button', { name: /create workspace/i }))
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('Something went wrong. Please try again.')
     })
   })
 
