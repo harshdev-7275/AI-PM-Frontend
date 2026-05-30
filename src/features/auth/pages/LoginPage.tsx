@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Icon } from '@/components/primitives/Icon'
@@ -12,17 +13,16 @@ export default function LoginPage() {
   const [email, setEmail]           = useState('')
   const [password, setPassword]     = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [error, setError]           = useState('')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError('')
     setIsSubmitting(true)
     try {
       await login(email, password)
+      toast.success('Welcome back!')
       navigate('/dashboard')
     } catch {
-      setError('Invalid email or password')
+      toast.error('Invalid email or password')
     } finally {
       setIsSubmitting(false)
     }
@@ -32,7 +32,7 @@ export default function LoginPage() {
     <AuthLayout>
       <div className="w-full max-w-sm flex flex-col items-center gap-6">
 
-        <h1 className="text-white text-2xl font-semibold tracking-tight">Welcome back</h1>
+        <h1 className="dark:text-white text-gray-900 text-2xl font-semibold tracking-tight">Welcome back</h1>
 
         {/* Social auth */}
         <div className="w-full flex flex-col gap-2">
@@ -46,7 +46,7 @@ export default function LoginPage() {
         {/* Form */}
         <form onSubmit={handleSubmit} className="w-full flex flex-col gap-3">
           <div className="relative">
-            <Icon name="mail" size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none" />
+            <Icon name="mail" size={16} className="absolute left-3 top-1/2 -translate-y-1/2 dark:text-white/30 text-gray-400 pointer-events-none" />
             <Input
               type="email"
               placeholder="name@company.com"
@@ -54,7 +54,7 @@ export default function LoginPage() {
               onChange={(e) => setEmail(e.target.value)}
               required
               autoComplete="email"
-              className="pl-10 bg-white/[0.05] border-white/10 text-white placeholder:text-white/25 focus-visible:ring-brand-primary/50 focus-visible:border-brand-primary/50"
+              className="pl-10 dark:bg-white/[0.05] bg-gray-100 dark:border-white/10 border-gray-300 dark:text-white text-gray-900 dark:placeholder:text-white/25 placeholder:text-gray-500 focus-visible:ring-brand-primary/50 focus-visible:border-brand-primary/50"
             />
           </div>
 
@@ -68,7 +68,7 @@ export default function LoginPage() {
               </Link>
             </div>
             <div className="relative">
-              <Icon name="lock" size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none" />
+              <Icon name="lock" size={16} className="absolute left-3 top-1/2 -translate-y-1/2 dark:text-white/30 text-gray-400 pointer-events-none" />
               <Input
                 type="password"
                 placeholder="••••••••"
@@ -76,16 +76,10 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 autoComplete="current-password"
-                className="pl-10 bg-white/[0.05] border-white/10 text-white placeholder:text-white/25 focus-visible:ring-brand-primary/50 focus-visible:border-brand-primary/50"
+                className="pl-10 dark:bg-white/[0.05] bg-gray-100 dark:border-white/10 border-gray-300 dark:text-white text-gray-900 dark:placeholder:text-white/25 placeholder:text-gray-500 focus-visible:ring-brand-primary/50 focus-visible:border-brand-primary/50"
               />
             </div>
-          </div>
-
-          {error && (
-            <p role="alert" className="text-red-400 text-sm text-center">
-              {error}
-            </p>
-          )}
+           </div>
 
           <Button
             type="submit"
@@ -102,7 +96,7 @@ export default function LoginPage() {
           </Button>
         </form>
 
-        <p className="text-white/35 text-sm">
+        <p className="dark:text-white/35 text-gray-600 text-sm">
           No account?{' '}
           <Link to="/signup" className="text-brand-accent hover:text-brand-accent-hover transition-colors">
             Sign up free
@@ -120,7 +114,7 @@ function OAuthButton({ icon, label }: { icon: 'google' | 'microsoft'; label: str
     <Button
       type="button"
       variant="outline"
-      className="w-full h-auto py-2.5 gap-3 bg-white/[0.06] border-white/10 text-white/80 hover:bg-white/10 hover:text-white/90"
+      className="w-full h-auto py-2.5 gap-3 dark:bg-white/[0.06] bg-gray-100 dark:border-white/10 border-gray-300 dark:text-white/80 text-gray-700 dark:hover:bg-white/10 hover:bg-gray-200 dark:hover:text-white/90 hover:text-gray-900"
     >
       <Icon name={icon} size={18} />
       {label}
@@ -131,9 +125,9 @@ function OAuthButton({ icon, label }: { icon: 'google' | 'microsoft'; label: str
 function Divider({ label }: { label: string }) {
   return (
     <div className="w-full flex items-center gap-3">
-      <div className="flex-1 h-px bg-white/10" />
-      <span className="text-white/30 text-xs">{label}</span>
-      <div className="flex-1 h-px bg-white/10" />
+      <div className="flex-1 h-px dark:bg-white/10 bg-gray-300" />
+      <span className="dark:text-white/30 text-gray-600 text-xs">{label}</span>
+      <div className="flex-1 h-px dark:bg-white/10 bg-gray-300" />
     </div>
   )
 }

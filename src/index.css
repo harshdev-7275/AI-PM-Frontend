@@ -131,7 +131,15 @@
 
 body {
   margin: 0;
-  background: #09090b;
+  background: #fff;
+  color: #000;
+}
+
+@media (prefers-color-scheme: dark) {
+  body {
+    background: #09090b;
+    color: #fff;
+  }
 }
 
 h1,
