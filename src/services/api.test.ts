@@ -1,7 +1,8 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeEach } from 'vitest'
 import { http, HttpResponse } from 'msw'
 import { server } from '../../test/mocks/server'
 import { mockUser, mockAuthResponse } from '../../test/mocks/handlers'
+import { useAuthStore } from '@/store/useAuthStore'
 import { loginUser, registerUser, logoutUser, refreshToken, getMe } from './api'
 
 describe('loginUser', () => {
@@ -100,5 +101,101 @@ describe('getMe', () => {
 
   it('throws when token is invalid (401)', async () => {
     await expect(getMe('invalid-token')).rejects.toThrow()
+  })
+})
+
+// =============================================================================
+// TOKEN REFRESH INTERCEPTOR
+// =============================================================================
+
+describe('Token refresh interceptor', () => {
+  beforeEach(() => {
+    useAuthStore.setState({
+      user:            mockUser,
+      accessToken:     'expired-token',
+      isLoading:       false,
+      isAuthenticated: true,
+    })
+  })
+
+  it('retries the original request with the new token after a 401', async () => {
+    let callCount = 0
+    server.use(
+      http.post('http://localhost:4000/auth/refresh', () =>
+        HttpResponse.json({ accessToken: 'mock-access-token', expiresIn: 900 })
+      ),
+      http.get('http://localhost:4000/auth/me', ({ request }) => {
+        callCount++
+        if (callCount === 1) {
+          return HttpResponse.json({ error: 'UNAUTHORIZED' }, { status: 401 })
+        }
+        const auth = request.headers.get('Authorization')
+        return auth === 'Bearer mock-access-token'
+          ? HttpResponse.json(mockUser)
+          : HttpResponse.json({ error: 'UNAUTHORIZED' }, { status: 401 })
+      })
+    )
+
+    const result = await getMe('expired-token')
+    expect(result.email).toBe(mockUser.email)
+    expect(callCount).toBe(2)
+  })
+
+  it('updates the access token in the store after a successful refresh', async () => {
+    let callCount = 0
+    server.use(
+      http.post('http://localhost:4000/auth/refresh', () =>
+        HttpResponse.json({ accessToken: 'mock-access-token', expiresIn: 900 })
+      ),
+      http.get('http://localhost:4000/auth/me', () => {
+        callCount++
+        if (callCount === 1) return HttpResponse.json({ error: 'UNAUTHORIZED' }, { status: 401 })
+        return HttpResponse.json(mockUser)
+      })
+    )
+
+    await getMe('expired-token')
+    expect(useAuthStore.getState().accessToken).toBe('mock-access-token')
+  })
+
+  it('clears auth and redirects to /login when refresh fails', async () => {
+    server.use(
+      http.post('http://localhost:4000/auth/refresh', () =>
+        HttpResponse.json({ error: 'REFRESH_TOKEN_EXPIRED' }, { status: 401 })
+      ),
+      http.get('http://localhost:4000/auth/me', () =>
+        HttpResponse.json({ error: 'UNAUTHORIZED' }, { status: 401 })
+      )
+    )
+
+    await expect(getMe('expired-token')).rejects.toThrow()
+    expect(useAuthStore.getState().isAuthenticated).toBe(false)
+  })
+
+  it('does not retry the refresh endpoint to prevent infinite loops', async () => {
+    server.use(
+      http.post('http://localhost:4000/auth/refresh', () =>
+        HttpResponse.json({ error: 'NO_REFRESH_TOKEN' }, { status: 401 })
+      )
+    )
+
+    await expect(refreshToken()).rejects.toThrow()
+    expect(useAuthStore.getState().isAuthenticated).toBe(false)
+  })
+
+  it('passes non-401 errors through without triggering a refresh', async () => {
+    let refreshCalled = false
+    server.use(
+      http.get('http://localhost:4000/auth/me', () =>
+        HttpResponse.json({ error: 'SERVER_ERROR' }, { status: 500 })
+      ),
+      http.post('http://localhost:4000/auth/refresh', () => {
+        refreshCalled = true
+        return HttpResponse.json({ accessToken: 'token', expiresIn: 900 })
+      })
+    )
+
+    await expect(getMe('any-token')).rejects.toThrow()
+    expect(refreshCalled).toBe(false)
   })
 })

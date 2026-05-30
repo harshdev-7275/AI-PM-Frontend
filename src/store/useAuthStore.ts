@@ -9,8 +9,9 @@ interface AuthState {
 }
 
 interface AuthActions {
-  setAuth:   (user: User, accessToken: string) => void
-  clearAuth: () => void
+  setAuth:        (user: User, accessToken: string) => void
+  setAccessToken: (accessToken: string) => void
+  clearAuth:      () => void
 }
 
 export const useAuthStore = create<AuthState & AuthActions>((set) => ({
@@ -21,6 +22,9 @@ export const useAuthStore = create<AuthState & AuthActions>((set) => ({
 
   setAuth: (user, accessToken) =>
     set({ user, accessToken, isAuthenticated: true, isLoading: false }),
+
+  setAccessToken: (accessToken) =>
+    set({ accessToken }),
 
   clearAuth: () =>
     set({ user: null, accessToken: null, isAuthenticated: false, isLoading: false }),

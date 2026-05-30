@@ -1,6 +1,8 @@
 import axios from 'axios'
+import type { InternalAxiosRequestConfig } from 'axios'
 import { z } from 'zod'
 import { env } from '@/lib/env'
+import { useAuthStore } from '@/store/useAuthStore'
 import type { AuthResponse, User } from '@/types'
 
 export const api = axios.create({
@@ -8,13 +10,6 @@ export const api = axios.create({
   timeout: 10_000,
   withCredentials: true,
 })
-
-api.interceptors.response.use(
-  (res) => res,
-  (error: unknown) => {
-    return Promise.reject(error)
-  },
-)
 
 // =============================================================================
 // RESPONSE SCHEMAS — Zod validates all API responses at the boundary
@@ -44,6 +39,90 @@ const RefreshResponseSchema = z.object({
 const LogoutResponseSchema = z.object({
   message: z.string(),
 })
+
+// =============================================================================
+// TOKEN REFRESH INTERCEPTOR
+// =============================================================================
+
+// Extends axios config to track whether a request has already been retried.
+// `as RetryableConfig` is used at the axios boundary where types cannot be
+// augmented directly — InternalAxiosRequestConfig is a sealed axios internal.
+interface RetryableConfig extends InternalAxiosRequestConfig {
+  _retry?: boolean
+}
+
+// Prevents concurrent 401s from each triggering a separate refresh call.
+let isRefreshing = false
+let failedQueue: Array<{
+  resolve: (token: string) => void
+  reject:  (err: unknown) => void
+}> = []
+
+const processQueue = (error: unknown, token: string | null): void => {
+  failedQueue.forEach((p) => {
+    if (error) p.reject(error)
+    else       p.resolve(token as string)
+  })
+  failedQueue = []
+}
+
+api.interceptors.response.use(
+  (res) => res,
+  async (error: unknown) => {
+    if (!axios.isAxiosError(error) || error.response?.status !== 401) {
+      return Promise.reject(error)
+    }
+
+    const originalRequest = error.config as RetryableConfig
+    if (!originalRequest) return Promise.reject(error)
+
+    // Never retry auth endpoints:
+    // - /auth/refresh would cause an infinite loop
+    // - /auth/login and /auth/register 401 means wrong credentials, not expired token
+    const isAuthEndpoint = ['/auth/refresh', '/auth/login', '/auth/register']
+      .some((p) => originalRequest.url?.includes(p))
+
+    if (isAuthEndpoint) {
+      if (originalRequest.url?.includes('/auth/refresh')) {
+        useAuthStore.getState().clearAuth()
+      }
+      return Promise.reject(error)
+    }
+
+    // Already retried with a fresh token and still got 401 — session is invalid
+    if (originalRequest._retry) {
+      useAuthStore.getState().clearAuth()
+      return Promise.reject(error)
+    }
+
+    // Another request is already refreshing — queue this one until done
+    if (isRefreshing) {
+      return new Promise<string>((resolve, reject) => {
+        failedQueue.push({ resolve, reject })
+      }).then((token) => {
+        originalRequest.headers['Authorization'] = `Bearer ${token}`
+        return api(originalRequest)
+      })
+    }
+
+    originalRequest._retry = true
+    isRefreshing = true
+
+    try {
+      const { accessToken } = await refreshToken()
+      useAuthStore.getState().setAccessToken(accessToken)
+      processQueue(null, accessToken)
+      originalRequest.headers['Authorization'] = `Bearer ${accessToken}`
+      return api(originalRequest)
+    } catch (refreshError) {
+      processQueue(refreshError, null)
+      useAuthStore.getState().clearAuth()
+      return Promise.reject(refreshError)
+    } finally {
+      isRefreshing = false
+    }
+  }
+)
 
 // =============================================================================
 // AUTH
