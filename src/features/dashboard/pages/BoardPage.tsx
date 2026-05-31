@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { Plus } from 'lucide-react'
 import {
   DndContext,
@@ -10,6 +10,7 @@ import {
   type DragEndEvent,
 } from '@dnd-kit/core'
 import { useBoardData } from '@/hooks/useBoardData'
+import { useDragScroll } from '@/hooks/useDragScroll'
 import { useProjectStore } from '@/store/useProjectStore'
 import { BoardColumn } from '../components/BoardColumn'
 import { IssueCardContent } from '../components/IssueCard'
@@ -55,6 +56,8 @@ export default function BoardPage() {
   const [modalOpen,     setModalOpen]     = useState(false)
   const [modalStatusId, setModalStatusId] = useState<string>('')
   const [activeIssue,   setActiveIssue]   = useState<Issue | null>(null)
+
+  const dragScroll = useDragScroll()
 
   // 8px movement threshold — prevents accidental drags on click
   const sensors = useSensors(
@@ -140,8 +143,15 @@ export default function BoardPage() {
         </div>
       ) : (
         <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd}>
-          <div className="flex-1 overflow-x-auto overflow-y-hidden">
-            <div className="flex gap-4 p-6 h-full">
+          <div
+            ref={dragScroll.ref}
+            onMouseDown={dragScroll.onMouseDown}
+            onMouseMove={dragScroll.onMouseMove}
+            onMouseUp={dragScroll.onMouseUp}
+            onMouseLeave={dragScroll.onMouseLeave}
+            className="flex-1 overflow-x-auto overflow-y-hidden cursor-grab"
+          >
+            <div className="flex gap-6 px-6 pt-4 pb-6 h-full">
               {statuses.map((status) => (
                 <BoardColumn
                   key={status.id}

@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { useIssueStore } from '@/store/useIssueStore'
+import { useProjectStore } from '@/store/useProjectStore'
 import { useBoardEvents } from '@/hooks/useBoardEvents'
 import {
   getIssueStatuses,
@@ -12,6 +13,18 @@ import type { CreateIssueInput, Issue } from '@/types'
 
 export function useBoardData() {
   const { slug, projectId } = useParams<{ slug: string; projectId: string }>()
+
+  // Ensure currentProject is set even on direct URL load
+  const projects          = useProjectStore((s) => s.projects)
+  const currentProject    = useProjectStore((s) => s.currentProject)
+  const setCurrentProject = useProjectStore((s) => s.setCurrentProject)
+
+  useEffect(() => {
+    if (!projectId) return
+    if (currentProject?.id === projectId) return
+    const match = projects.find((p) => p.id === projectId)
+    if (match) setCurrentProject(match)
+  }, [projectId, projects, currentProject?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const {
     issues,
