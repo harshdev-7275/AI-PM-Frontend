@@ -4,11 +4,14 @@ import { ProtectedRoute } from './ProtectedRoute'
 import { PublicRoute } from './PublicRoute'
 import { OrgRoute } from './OrgRoute'
 
-const LoginPage       = lazy(() => import('@/features/auth/pages/LoginPage'))
-const SignupPage      = lazy(() => import('@/features/auth/pages/SignupPage'))
-const DashboardLayout = lazy(() => import('@/features/dashboard/DashboardLayout'))
-const DashboardPage   = lazy(() => import('@/features/dashboard/DashboardPage'))
-const BoardPage       = lazy(() => import('@/features/dashboard/pages/BoardPage'))
+const LoginPage         = lazy(() => import('@/features/auth/pages/LoginPage'))
+const SignupPage        = lazy(() => import('@/features/auth/pages/SignupPage'))
+const DashboardLayout   = lazy(() => import('@/features/dashboard/DashboardLayout'))
+const DashboardPage     = lazy(() => import('@/features/dashboard/DashboardPage'))
+const BoardPage         = lazy(() => import('@/features/dashboard/pages/BoardPage'))
+const SettingsPage      = lazy(() => import('@/features/settings/pages/SettingsPage'))
+const MembersPage       = lazy(() => import('@/features/settings/pages/MembersPage'))
+const AcceptInvitePage  = lazy(() => import('@/features/settings/pages/AcceptInvitePage'))
 
 export function AppRouter() {
   return (
@@ -31,7 +34,13 @@ export function AppRouter() {
         >
           <Route path="dashboard" element={<DashboardPage />} />
           <Route path="projects/:projectId/board" element={<BoardPage />} />
+          <Route path="settings" element={<SettingsPage />}>
+            <Route path="members" element={<MembersPage />} />
+          </Route>
         </Route>
+
+        {/* Standalone — user may not be authenticated when accepting an invite */}
+        <Route path="/invite/:token" element={<AcceptInvitePage />} />
 
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/login" replace />} />

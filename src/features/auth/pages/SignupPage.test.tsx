@@ -14,12 +14,13 @@ vi.mock('sonner', () => ({
 
 import { toast } from 'sonner'
 
-function renderSignupPage() {
+function renderSignupPage(initialUrl = '/signup') {
   return render(
-    <MemoryRouter initialEntries={['/signup']}>
+    <MemoryRouter initialEntries={[initialUrl]}>
       <Routes>
         <Route path="/signup"          element={<SignupPage />} />
         <Route path="/:slug/dashboard" element={<div>dashboard page</div>} />
+        <Route path="/invite/:token"   element={<div>invite page</div>} />
       </Routes>
     </MemoryRouter>
   )
@@ -177,5 +178,32 @@ describe('Step 3 — Organization details', () => {
     await user.click(screen.getByRole('button', { name: /back/i }))
 
     expect(screen.getByRole('button', { name: 'Engineer' })).toBeInTheDocument()
+  })
+})
+
+// =============================================================================
+// INVITE FLOW
+// =============================================================================
+
+describe('invite query param', () => {
+  it('redirects to /invite/{token} after signup when ?invite param is present', async () => {
+    server.use(
+      http.post('http://localhost:4000/auth/register', () =>
+        HttpResponse.json(mockAuthResponse, { status: 201 })
+      ),
+      http.post('http://localhost:4000/orgs', () =>
+        HttpResponse.json(mockOrg, { status: 201 })
+      ),
+    )
+
+    const user = userEvent.setup()
+    renderSignupPage('/signup?invite=abc-invite-token')
+
+    await goToStep3(user)
+    await user.click(screen.getByRole('button', { name: /create workspace/i }))
+
+    await waitFor(() => {
+      expect(screen.getByText('invite page')).toBeInTheDocument()
+    })
   })
 })

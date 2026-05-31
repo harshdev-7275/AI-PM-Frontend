@@ -130,6 +130,25 @@ export interface Comment {
   updatedAt: string
 }
 
+export type OrgMemberRole = 'owner' | 'admin' | 'member'
+export type InviteRole    = Exclude<OrgMemberRole, 'owner'>
+
+export interface OrgMember {
+  id:        string
+  userId:    string
+  name:      string
+  email:     string
+  avatarUrl: string | null
+  role:      OrgMemberRole
+  joinedAt:  string
+}
+
+export interface Invitation {
+  token:     string
+  email:     string
+  expiresAt: string
+}
+
 export interface IssueHistoryEntry {
   id:           string
   issueId:      string

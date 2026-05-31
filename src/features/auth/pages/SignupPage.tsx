@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
@@ -382,9 +382,11 @@ interface FormData {
 }
 
 export default function SignupPage() {
-  const navigate = useNavigate()
-  const { register } = useAuth()
-  const { createOrg } = useOrg()
+  const navigate           = useNavigate()
+  const [searchParams]     = useSearchParams()
+  const inviteToken        = searchParams.get('invite')
+  const { register }       = useAuth()
+  const { createOrg }      = useOrg()
 
   const [form, setForm]               = useState<FormData>({ name: '', email: '', password: '', jobTitle: '' })
   const [orgName, setOrgName]         = useState('')
@@ -420,9 +422,9 @@ export default function SignupPage() {
       // Step 2 — create org using the token now in the auth store
       const org = await createOrg(orgName, orgSlug)
 
-      // Step 3 — navigate into the new org's dashboard
+      // Step 3 — if an invite is pending, complete the flow; otherwise go to the new org
       toast.success('Workspace created successfully!')
-      navigate(`/${org.slug}/dashboard`)
+      navigate(inviteToken ? `/invite/${inviteToken}` : `/${org.slug}/dashboard`)
     } catch {
       toast.error('Something went wrong. Please try again.')
     } finally {

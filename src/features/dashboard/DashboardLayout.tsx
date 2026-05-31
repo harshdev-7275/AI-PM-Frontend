@@ -61,7 +61,7 @@ function IconRail() {
 
       <div className="flex flex-col items-center gap-2">
         <NavLink
-          to={`/${slug}/settings`}
+          to={`/${slug}/settings/members`}
           title="Settings"
           className={({ isActive }) =>
             [
@@ -182,8 +182,23 @@ function Sidebar({ onNewProject }: SidebarProps) {
         </div>
       </div>
 
-      {/* New project button */}
-      <div className="p-3 border-t border-sidebar-border">
+      {/* Bottom links */}
+      <div className="p-3 border-t border-sidebar-border flex flex-col gap-0.5">
+        <NavLink
+          to={`/${slug}/settings/members`}
+          className={({ isActive }) =>
+            [
+              'flex items-center gap-2.5 px-2 py-1.5 rounded-md text-sm transition-colors',
+              isActive
+                ? 'bg-brand-primary/10 text-brand-primary font-medium'
+                : 'text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground',
+            ].join(' ')
+          }
+        >
+          <Settings size={15} />
+          Settings
+        </NavLink>
+
         <button
           type="button"
           onClick={onNewProject}

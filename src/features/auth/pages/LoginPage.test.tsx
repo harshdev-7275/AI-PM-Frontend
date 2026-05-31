@@ -14,12 +14,13 @@ vi.mock('sonner', () => ({
 
 import { toast } from 'sonner'
 
-function renderLoginPage() {
+function renderLoginPage(initialUrl = '/login') {
   return render(
-    <MemoryRouter initialEntries={['/login']}>
+    <MemoryRouter initialEntries={[initialUrl]}>
       <Routes>
-        <Route path="/login"     element={<LoginPage />} />
-        <Route path="/dashboard" element={<div>dashboard page</div>} />
+        <Route path="/login"         element={<LoginPage />} />
+        <Route path="/dashboard"     element={<div>dashboard page</div>} />
+        <Route path="/invite/:token" element={<div>invite page</div>} />
       </Routes>
     </MemoryRouter>
   )
@@ -130,6 +131,25 @@ describe('LoginPage', () => {
 
     await waitFor(() => {
       expect(screen.getByText('dashboard page')).toBeInTheDocument()
+    })
+  })
+})
+
+// =============================================================================
+// INVITE FLOW
+// =============================================================================
+
+describe('invite query param', () => {
+  it('redirects to /invite/{token} instead of /dashboard when ?invite param is present', async () => {
+    const user = userEvent.setup()
+    renderLoginPage('/login?invite=abc-invite-token')
+
+    await user.type(screen.getByPlaceholderText('name@company.com'), 'test@example.com')
+    await user.type(screen.getByPlaceholderText('••••••••'), 'password123')
+    await user.click(screen.getByRole('button', { name: 'Sign in' }))
+
+    await waitFor(() => {
+      expect(screen.getByText('invite page')).toBeInTheDocument()
     })
   })
 })

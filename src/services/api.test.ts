@@ -1,9 +1,15 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { http, HttpResponse } from 'msw'
 import { server } from '../../test/mocks/server'
-import { mockUser, mockAuthResponse } from '../../test/mocks/handlers'
+import {
+  mockUser, mockAuthResponse, mockOrg,
+  mockOrgMember, mockInvitation,
+} from '../../test/mocks/handlers'
 import { useAuthStore } from '@/store/useAuthStore'
-import { loginUser, registerUser, logoutUser, refreshToken, getMe } from './api'
+import {
+  loginUser, registerUser, logoutUser, refreshToken, getMe,
+  inviteMember, getOrgMembers, updateMemberRole, removeMember, acceptInvitation,
+} from './api'
 
 describe('loginUser', () => {
   it('sends POST /auth/login and returns AuthResponse', async () => {
@@ -101,6 +107,170 @@ describe('getMe', () => {
 
   it('throws when token is invalid (401)', async () => {
     await expect(getMe('invalid-token')).rejects.toThrow()
+  })
+})
+
+// =============================================================================
+// MEMBERS
+// =============================================================================
+
+describe('getOrgMembers', () => {
+  it('sends GET /orgs/:slug/members and returns OrgMember array', async () => {
+    const result = await getOrgMembers('test-org')
+
+    expect(result).toHaveLength(1)
+    expect(result[0]?.id).toBe(mockOrgMember.id)
+    expect(result[0]?.email).toBe(mockOrgMember.email)
+    expect(result[0]?.role).toBe(mockOrgMember.role)
+    expect(result[0]?.joinedAt).toBe(mockOrgMember.joinedAt)
+  })
+
+  it('throws when org is not found (404)', async () => {
+    server.use(
+      http.get('http://localhost:4000/orgs/:slug/members', () =>
+        HttpResponse.json({ error: 'NOT_FOUND', message: 'Org not found' }, { status: 404 })
+      )
+    )
+
+    await expect(getOrgMembers('no-such-org')).rejects.toThrow()
+  })
+})
+
+describe('inviteMember', () => {
+  it('sends POST /orgs/:slug/invite with email and role, returns invitation', async () => {
+    const result = await inviteMember('test-org', 'newmember@example.com', 'member')
+
+    expect(result.token).toBe(mockInvitation.token)
+    expect(result.email).toBe(mockInvitation.email)
+    expect(result.expiresAt).toBe(mockInvitation.expiresAt)
+  })
+
+  it('uses role "member" as the default', async () => {
+    let sentBody: unknown
+    server.use(
+      http.post('http://localhost:4000/orgs/:slug/invite', async ({ request }) => {
+        sentBody = await request.json()
+        return HttpResponse.json(mockInvitation, { status: 201 })
+      })
+    )
+
+    await inviteMember('test-org', 'newmember@example.com')
+
+    expect((sentBody as { role: string }).role).toBe('member')
+  })
+
+  it('throws when the email is already a member (409)', async () => {
+    server.use(
+      http.post('http://localhost:4000/orgs/:slug/invite', () =>
+        HttpResponse.json({ error: 'ALREADY_MEMBER', message: 'Already a member' }, { status: 409 })
+      )
+    )
+
+    await expect(inviteMember('test-org', 'existing@example.com')).rejects.toThrow()
+  })
+})
+
+describe('updateMemberRole', () => {
+  it('sends PATCH /orgs/:slug/members/:userId with role and returns updated member', async () => {
+    const result = await updateMemberRole('test-org', mockOrgMember.userId, 'admin')
+
+    expect(result.userId).toBe(mockOrgMember.userId)
+    expect(result.role).toBe('admin')
+  })
+
+  it('sends the correct role in the request body', async () => {
+    let sentBody: unknown
+    server.use(
+      http.patch('http://localhost:4000/orgs/:slug/members/:userId', async ({ request }) => {
+        sentBody = await request.json()
+        return HttpResponse.json({ ...mockOrgMember, role: 'admin' })
+      })
+    )
+
+    await updateMemberRole('test-org', mockOrgMember.userId, 'admin')
+
+    expect((sentBody as { role: string }).role).toBe('admin')
+  })
+})
+
+describe('removeMember', () => {
+  it('sends DELETE /orgs/:slug/members/:userId and resolves to undefined', async () => {
+    const result = await removeMember('test-org', mockOrgMember.userId)
+
+    expect(result).toBeUndefined()
+  })
+
+  it('throws when the member is not found (404)', async () => {
+    server.use(
+      http.delete('http://localhost:4000/orgs/:slug/members/:userId', () =>
+        HttpResponse.json({ error: 'NOT_FOUND', message: 'Member not found' }, { status: 404 })
+      )
+    )
+
+    await expect(removeMember('test-org', 'no-such-user')).rejects.toThrow()
+  })
+})
+
+describe('acceptInvitation', () => {
+  it('sends POST /orgs/invite/accept with token in body', async () => {
+    let sentBody: unknown
+    server.use(
+      http.post('http://localhost:4000/orgs/invite/accept', async ({ request }) => {
+        sentBody = await request.json()
+        return HttpResponse.json(mockOrg)
+      })
+    )
+
+    await acceptInvitation('invite-token-abc123')
+
+    expect((sentBody as { token: string }).token).toBe('invite-token-abc123')
+  })
+
+  it('sends without an Authorization header when no user is logged in', async () => {
+    useAuthStore.setState({ user: null, accessToken: null, isLoading: false, isAuthenticated: false })
+
+    let authHeader: string | null = null
+    server.use(
+      http.post('http://localhost:4000/orgs/invite/accept', ({ request }) => {
+        authHeader = request.headers.get('Authorization')
+        return HttpResponse.json(mockOrg)
+      })
+    )
+
+    await acceptInvitation('invite-token-abc123')
+
+    expect(authHeader).toBeNull()
+  })
+
+  it('sends with Authorization header when user is logged in', async () => {
+    useAuthStore.setState({
+      user:            mockUser,
+      accessToken:     'mock-access-token',
+      isLoading:       false,
+      isAuthenticated: true,
+    })
+
+    let authHeader: string | null = null
+    server.use(
+      http.post('http://localhost:4000/orgs/invite/accept', ({ request }) => {
+        authHeader = request.headers.get('Authorization')
+        return HttpResponse.json(mockOrg)
+      })
+    )
+
+    await acceptInvitation('invite-token-abc123')
+
+    expect(authHeader).toBe('Bearer mock-access-token')
+  })
+
+  it('throws on invalid or expired token (400)', async () => {
+    server.use(
+      http.post('http://localhost:4000/orgs/invite/accept', () =>
+        HttpResponse.json({ error: 'INVALID_TOKEN', message: 'Invite token is invalid or expired' }, { status: 400 })
+      )
+    )
+
+    await expect(acceptInvitation('bad-token')).rejects.toThrow()
   })
 })
 

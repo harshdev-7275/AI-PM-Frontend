@@ -7,6 +7,7 @@ import type {
   AuthResponse, User, Org, Project, Issue, IssueStatus,
   CreateIssueInput, UpdateIssueInput,
   IssueUser, IssueDetail, Comment, CommentAuthor, IssueHistoryEntry,
+  OrgMember, OrgMemberRole, InviteRole, Invitation,
 } from '@/types'
 
 
@@ -66,6 +67,24 @@ const OrgSchema = z.object({
   plan:      z.string(),
   isActive:  z.boolean(),
   createdAt: z.string(),
+})
+
+const OrgMemberRoleSchema = z.enum(['owner', 'admin', 'member'])
+
+export const OrgMemberSchema = z.object({
+  id:        z.string().uuid(),
+  userId:    z.string().uuid(),
+  name:      z.string(),
+  email:     z.string().email(),
+  avatarUrl: z.string().nullable(),
+  role:      OrgMemberRoleSchema,
+  joinedAt:  z.string(),
+})
+
+const InvitationSchema = z.object({
+  token:     z.string(),
+  email:     z.string().email(),
+  expiresAt: z.string(),
 })
 
 const IssueStatusSchema = z.object({
@@ -300,6 +319,44 @@ export const getUserOrgs = async (accessToken: string): Promise<Org[]> => {
     headers: { Authorization: `Bearer ${accessToken}` },
   })
   return z.array(OrgSchema).parse(res.data)
+}
+
+export const getOrgMembers = async (slug: string): Promise<OrgMember[]> => {
+  const res = await api.get(`/orgs/${slug}/members`)
+  return z.array(OrgMemberSchema).parse(res.data)
+}
+
+export const inviteMember = async (
+  slug:  string,
+  email: string,
+  role:  InviteRole = 'member',
+): Promise<Invitation> => {
+  const res = await api.post(`/orgs/${slug}/invite`, { email, role })
+  return InvitationSchema.parse(res.data)
+}
+
+export const updateMemberRole = async (
+  slug:   string,
+  userId: string,
+  role:   OrgMemberRole,
+): Promise<OrgMember> => {
+  const res = await api.patch(`/orgs/${slug}/members/${userId}`, { role })
+  return OrgMemberSchema.parse(res.data)
+}
+
+export const removeMember = async (
+  slug:   string,
+  userId: string,
+): Promise<void> => {
+  await api.delete(`/orgs/${slug}/members/${userId}`)
+}
+
+// The request interceptor attaches the Bearer token automatically when the user
+// is logged in. If no token is in the store, the request goes unauthenticated
+// and the component is responsible for handling any resulting 401.
+export const acceptInvitation = async (token: string): Promise<Org> => {
+  const res = await api.post('/orgs/invite/accept', { token })
+  return OrgSchema.parse(res.data)
 }
 
 // =============================================================================

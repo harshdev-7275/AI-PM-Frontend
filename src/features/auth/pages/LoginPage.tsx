@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -8,10 +8,12 @@ import AuthLayout from '@/features/auth/components/AuthLayout'
 import { useAuth } from '@/hooks/useAuth'
 
 export default function LoginPage() {
-  const navigate = useNavigate()
-  const { login } = useAuth()
-  const [email, setEmail]           = useState('')
-  const [password, setPassword]     = useState('')
+  const navigate                = useNavigate()
+  const [searchParams]          = useSearchParams()
+  const inviteToken             = searchParams.get('invite')
+  const { login }               = useAuth()
+  const [email, setEmail]       = useState('')
+  const [password, setPassword] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -20,7 +22,7 @@ export default function LoginPage() {
     try {
       await login(email, password)
       toast.success('Welcome back!')
-      navigate('/dashboard')
+      navigate(inviteToken ? `/invite/${inviteToken}` : '/dashboard')
     } catch {
       toast.error('Invalid email or password')
     } finally {
