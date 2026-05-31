@@ -3,7 +3,11 @@ import type { InternalAxiosRequestConfig } from 'axios'
 import { z } from 'zod'
 import { env } from '@/lib/env'
 import { useAuthStore } from '@/store/useAuthStore'
-import type { AuthResponse, User, Org, Project, Issue, IssueStatus,CreateIssueInput } from '@/types'
+import type {
+  AuthResponse, User, Org, Project, Issue, IssueStatus,
+  CreateIssueInput, UpdateIssueInput,
+  IssueUser, IssueDetail, Comment, CommentAuthor, IssueHistoryEntry,
+} from '@/types'
 
 
 export const api = axios.create({
@@ -71,6 +75,44 @@ const IssueStatusSchema = z.object({
   position: z.number(),
 })
 
+const IssueUserSchema = z.object({
+  id:        z.string().uuid(),
+  name:      z.string(),
+  email:     z.string(),
+  avatarUrl: z.string().nullable(),
+})
+
+const CommentAuthorSchema = z.object({
+  id:        z.string().uuid(),
+  name:      z.string(),
+  avatarUrl: z.string().nullable(),
+})
+
+const CommentSchema = z.object({
+  id:        z.string().uuid(),
+  issueId:   z.string().uuid(),
+  body:      z.string(),
+  isEdited:  z.boolean(),
+  parentId:  z.string().uuid().nullable(),
+  author:    CommentAuthorSchema,
+  createdAt: z.string(),
+  updatedAt: z.string(),
+})
+
+const IssueHistoryEntrySchema = z.object({
+  id:           z.string().uuid(),
+  issueId:      z.string().uuid(),
+  fieldChanged: z.string(),
+  oldValue:     z.string().nullable(),
+  newValue:     z.string().nullable(),
+  changedAt:    z.string(),
+  changedBy: z.object({
+    id:        z.string().uuid(),
+    name:      z.string(),
+    avatarUrl: z.string().nullable(),
+  }),
+})
+
 const IssueSchema = z.object({
   id:             z.string().uuid(),
   projectId:      z.string().uuid(),
@@ -96,6 +138,12 @@ const IssueSchema = z.object({
 })
 
 
+
+const IssueDetailSchema = IssueSchema.extend({
+  status:   IssueStatusSchema,
+  assignee: IssueUserSchema.nullable(),
+  reporter: IssueUserSchema,
+})
 
 // =============================================================================
 // TOKEN REFRESH INTERCEPTOR
@@ -301,6 +349,76 @@ export const createIssue = async (
   input)
     return IssueSchema.parse(res.data)
   }
+
+export const getIssue = async (
+  slug:      string,
+  projectId: string,
+  issueId:   string,
+): Promise<IssueDetail> => {
+  const res = await api.get(`/orgs/${slug}/projects/${projectId}/issues/${issueId}`)
+  return IssueDetailSchema.parse(res.data)
+}
+
+export const updateIssue = async (
+  slug:      string,
+  projectId: string,
+  issueId:   string,
+  input:     UpdateIssueInput,
+): Promise<Issue> => {
+  const res = await api.patch(`/orgs/${slug}/projects/${projectId}/issues/${issueId}`, input)
+  return IssueSchema.parse(res.data)
+}
+
+export const getComments = async (
+  slug:      string,
+  projectId: string,
+  issueId:   string,
+): Promise<Comment[]> => {
+  const res = await api.get(`/orgs/${slug}/projects/${projectId}/issues/${issueId}/comments`)
+  return z.array(CommentSchema).parse(res.data)
+}
+
+export const createComment = async (
+  slug:      string,
+  projectId: string,
+  issueId:   string,
+  body:      string,
+): Promise<Comment> => {
+  const res = await api.post(`/orgs/${slug}/projects/${projectId}/issues/${issueId}/comments`, { body })
+  return CommentSchema.parse(res.data)
+}
+
+export const updateComment = async (
+  slug:      string,
+  projectId: string,
+  issueId:   string,
+  commentId: string,
+  body:      string,
+): Promise<Comment> => {
+  const res = await api.patch(
+    `/orgs/${slug}/projects/${projectId}/issues/${issueId}/comments/${commentId}`,
+    { body },
+  )
+  return CommentSchema.parse(res.data)
+}
+
+export const deleteComment = async (
+  slug:      string,
+  projectId: string,
+  issueId:   string,
+  commentId: string,
+): Promise<void> => {
+  await api.delete(`/orgs/${slug}/projects/${projectId}/issues/${issueId}/comments/${commentId}`)
+}
+
+export const getIssueHistory = async (
+  slug:      string,
+  projectId: string,
+  issueId:   string,
+): Promise<IssueHistoryEntry[]> => {
+  const res = await api.get(`/orgs/${slug}/projects/${projectId}/issues/${issueId}/history`)
+  return z.array(IssueHistoryEntrySchema).parse(res.data)
+}
 
 export const updateIssueStatus = async (
   slug:      string,

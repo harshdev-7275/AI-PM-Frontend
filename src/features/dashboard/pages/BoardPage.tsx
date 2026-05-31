@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react'
+import { AnimatePresence } from 'framer-motion'
 import { Plus } from 'lucide-react'
 import {
   DndContext,
@@ -15,6 +16,7 @@ import { useProjectStore } from '@/store/useProjectStore'
 import { BoardColumn } from '../components/BoardColumn'
 import { IssueCardContent } from '../components/IssueCard'
 import { CreateIssueModal } from '../components/CreateIssueModal'
+import { IssueSlideOver } from '../components/IssueSlideOver'
 import { Button } from '@/components/ui/button'
 import type { Issue } from '@/types'
 
@@ -52,10 +54,17 @@ export default function BoardPage() {
   const { statuses, issues, isLoading, handleDragEnd, handleCreateIssue } = useBoardData()
   const currentProject = useProjectStore((s) => s.currentProject)
 
-  const [activeTab,     setActiveTab]     = useState<Tab>('Board')
-  const [modalOpen,     setModalOpen]     = useState(false)
-  const [modalStatusId, setModalStatusId] = useState<string>('')
-  const [activeIssue,   setActiveIssue]   = useState<Issue | null>(null)
+  const [activeTab,       setActiveTab]       = useState<Tab>('Board')
+  const [modalOpen,       setModalOpen]       = useState(false)
+  const [modalStatusId,   setModalStatusId]   = useState<string>('')
+  const [activeIssue,     setActiveIssue]     = useState<Issue | null>(null)
+  const [selectedIssueId, setSelectedIssueId] = useState<string | null>(null)
+  const [isSlideOverOpen, setIsSlideOverOpen] = useState(false)
+
+  const handleCardClick = (issueId: string) => {
+    setSelectedIssueId(issueId)
+    setIsSlideOverOpen(true)
+  }
 
   const dragScroll = useDragScroll()
 
@@ -159,7 +168,7 @@ export default function BoardPage() {
                   projectKey={currentProject?.key ?? ''}
                   issues={issues.filter((i) => i.statusId === status.id)}
                   onAddIssue={openModal}
-                  onCardClick={() => {}}
+                  onCardClick={handleCardClick}
                 />
               ))}
             </div>
@@ -177,6 +186,20 @@ export default function BoardPage() {
           </DragOverlay>
         </DndContext>
       )}
+
+      {/* ------------------------------------------------------------------ */}
+      {/* Issue slide-over                                                     */}
+      {/* ------------------------------------------------------------------ */}
+      <AnimatePresence>
+        {selectedIssueId && (
+          <IssueSlideOver
+            key={selectedIssueId}
+            issueId={selectedIssueId}
+            isOpen={isSlideOverOpen}
+            onClose={() => setIsSlideOverOpen(false)}
+          />
+        )}
+      </AnimatePresence>
 
       {/* ------------------------------------------------------------------ */}
       {/* Create issue modal                                                   */}

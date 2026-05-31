@@ -85,9 +85,61 @@ export interface Issue {
 
 
 export interface CreateIssueInput {
-    title:      string
-    type:       IssueType
-    priority:   IssuePriority
-    statusId:   string
-    assigneeId?: string
+  title:       string
+  type:        IssueType
+  priority:    IssuePriority
+  statusId:    string
+  assigneeId?: string
+}
+
+export interface UpdateIssueInput {
+  title?:       string
+  description?: string | null
+  priority?:    IssuePriority
+  assigneeId?:  string | null
+  dueDate?:     string | null
+}
+
+export interface IssueUser {
+  id:        string
+  name:      string
+  email:     string
+  avatarUrl: string | null
+}
+
+export interface IssueDetail extends Issue {
+  status:   IssueStatus
+  assignee: IssueUser | null
+  reporter: IssueUser
+}
+
+export interface CommentAuthor {
+  id:        string
+  name:      string
+  avatarUrl: string | null
+}
+
+export interface Comment {
+  id:        string
+  issueId:   string
+  body:      string
+  isEdited:  boolean
+  parentId:  string | null
+  author:    CommentAuthor
+  createdAt: string
+  updatedAt: string
+}
+
+export interface IssueHistoryEntry {
+  id:           string
+  issueId:      string
+  fieldChanged: string
+  oldValue:     string | null
+  newValue:     string | null
+  changedAt:    string
+  changedBy: {
+    id:        string
+    name:      string
+    avatarUrl: string | null
   }
+}

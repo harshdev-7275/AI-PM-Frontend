@@ -1,3 +1,4 @@
+import { useRef, useEffect } from 'react'
 import { useDraggable } from '@dnd-kit/core'
 import type { Issue, IssueType, IssuePriority } from '@/types'
 
@@ -109,10 +110,26 @@ interface IssueCardProps {
 }
 
 export function IssueCard({ issue, projectKey, assigneeName, onClick }: IssueCardProps) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id:   issue.id,
     data: { statusId: issue.statusId },
   })
+
+  // Track whether a drag was activated so the pointer-up click is suppressed.
+  // isDragging flips true as soon as the 8px activation threshold is crossed;
+  // the subsequent click event fires after isDragging returns to false.
+  const didDrag = useRef(false)
+  useEffect(() => {
+    if (isDragging) didDrag.current = true
+  }, [isDragging])
+
+  const handleClick = () => {
+    if (didDrag.current) {
+      didDrag.current = false
+      return
+    }
+    onClick(issue.id)
+  }
 
   return (
     <div
@@ -121,7 +138,7 @@ export function IssueCard({ issue, projectKey, assigneeName, onClick }: IssueCar
       data-dnd-card
       {...listeners}
       {...attributes}
-      onClick={() => onClick(issue.id)}
+      onClick={handleClick}
     >
       <IssueCardContent
         issue={issue}

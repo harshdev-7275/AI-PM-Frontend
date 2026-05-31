@@ -13,6 +13,7 @@ interface IssueActions {
   setLoading:        (loading: boolean) => void
   addIssue:          (issue: Issue) => void
   updateIssueStatus: (issueId: string, statusId: string) => void
+  patchIssue:        (issueId: string, patch: Partial<Issue>) => void
   clearIssues:       () => void
 }
 
@@ -36,6 +37,13 @@ export const useIssueStore = create<IssueState & IssueActions>((set) => ({
     set((state) => ({
       issues: state.issues.map((i) =>
         i.id === issueId ? { ...i, statusId } : i
+      ),
+    })),
+
+  patchIssue: (issueId, patch) =>
+    set((state) => ({
+      issues: state.issues.map((i) =>
+        i.id === issueId ? { ...i, ...patch } : i
       ),
     })),
 
