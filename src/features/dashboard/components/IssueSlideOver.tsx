@@ -6,7 +6,7 @@ import { useIssueDetail } from '@/hooks/useIssueDetail'
 import { useIssueStore } from '@/store/useIssueStore'
 import { useProjectStore } from '@/store/useProjectStore'
 import { ActivityFeed } from './ActivityFeed'
-import type { IssuePriority, IssueType } from '@/types'
+import type { IssuePriority, IssueType, ProjectMember } from '@/types'
 
 // =============================================================================
 // CONSTANTS
@@ -123,6 +123,89 @@ function StatusDropdown({
             >
               <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: s.color }} />
               {s.name}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// =============================================================================
+// ASSIGNEE DROPDOWN
+// =============================================================================
+
+function AssigneeDropdown({
+  assigneeId,
+  assignee,
+  members,
+  onSelect,
+}: {
+  assigneeId: string | null
+  assignee:   { id: string; name: string; avatarUrl?: string | null } | null
+  members:    ProjectMember[]
+  onSelect:   (userId: string | null) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const handler = (e: MouseEvent) => {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="flex items-center gap-2 w-full px-2 py-1 rounded-md hover:bg-muted transition-colors text-left"
+      >
+        {assignee ? (
+          <>
+            <Avatar name={assignee.name} url={assignee.avatarUrl} />
+            <span className="text-sm text-foreground truncate">{assignee.name}</span>
+          </>
+        ) : (
+          <span className="text-sm text-muted-foreground/60 italic">Unassigned</span>
+        )}
+        <ChevronDown size={11} className="text-muted-foreground ml-auto shrink-0" />
+      </button>
+
+      {open && (
+        <div className="absolute top-full left-0 mt-1 z-10 min-w-[180px] bg-popover border border-border rounded-lg shadow-lg py-1 overflow-hidden">
+          <button
+            type="button"
+            onClick={() => { onSelect(null); setOpen(false) }}
+            className={[
+              'w-full flex items-center gap-2 px-3 py-1.5 text-xs text-left transition-colors',
+              assigneeId === null
+                ? 'bg-brand-primary/10 text-brand-primary font-medium'
+                : 'text-muted-foreground hover:bg-muted',
+            ].join(' ')}
+          >
+            <span className="w-6 h-6 rounded-full bg-muted border border-border flex items-center justify-center text-[9px] text-muted-foreground shrink-0">–</span>
+            Unassigned
+          </button>
+
+          {members.map((m) => (
+            <button
+              key={m.userId}
+              type="button"
+              onClick={() => { onSelect(m.userId); setOpen(false) }}
+              className={[
+                'w-full flex items-center gap-2 px-3 py-1.5 text-xs text-left transition-colors',
+                assigneeId === m.userId
+                  ? 'bg-brand-primary/10 text-brand-primary font-medium'
+                  : 'text-foreground hover:bg-muted',
+              ].join(' ')}
+            >
+              <Avatar name={m.name} url={m.avatarUrl} />
+              {m.name}
             </button>
           ))}
         </div>
@@ -325,7 +408,7 @@ export function IssueSlideOver({ issueId, isOpen, onClose }: IssueSlideOverProps
   const statuses = useIssueStore((s) => s.statuses)
 
   const {
-    issue, comments, history, isLoading, isSaving,
+    issue, comments, history, members, isLoading, isSaving,
     loadIssue, handleUpdateField, handleUpdateStatus, handleAddComment,
   } = useIssueDetail(slug!, projectId!)
 
@@ -447,14 +530,12 @@ export function IssueSlideOver({ issueId, isOpen, onClose }: IssueSlideOverProps
                 <div className="flex flex-col gap-5 w-52 shrink-0 border-l border-border overflow-y-auto px-4 py-5 bg-muted/20">
                   {/* Assignee */}
                   <MetaRow label="Assignee">
-                    {issue.assignee ? (
-                      <div className="flex items-center gap-2">
-                        <Avatar name={issue.assignee.name} url={issue.assignee.avatarUrl} />
-                        <span className="text-sm text-foreground truncate">{issue.assignee.name}</span>
-                      </div>
-                    ) : (
-                      <span className="text-sm text-muted-foreground/60 italic">Unassigned</span>
-                    )}
+                    <AssigneeDropdown
+                      assigneeId={issue.assigneeId}
+                      assignee={issue.assignee}
+                      members={members}
+                      onSelect={(userId) => void handleUpdateField('assigneeId', userId)}
+                    />
                   </MetaRow>
 
                   {/* Reporter */}

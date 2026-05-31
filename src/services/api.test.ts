@@ -3,13 +3,14 @@ import { http, HttpResponse } from 'msw'
 import { server } from '../../test/mocks/server'
 import {
   mockUser, mockAuthResponse, mockOrg,
-  mockOrgMember, mockInvitation, mockWorkflowStatus,
+  mockOrgMember, mockInvitation, mockWorkflowStatus, mockProjectMember,
 } from '../../test/mocks/handlers'
 import { useAuthStore } from '@/store/useAuthStore'
 import {
   loginUser, registerUser, logoutUser, refreshToken, getMe,
   inviteMember, getOrgMembers, updateMemberRole, removeMember, acceptInvitation,
   getWorkflowStatuses, createStatus, updateStatus, deleteStatus, StatusHasIssuesError,
+  getProjectMembers,
 } from './api'
 
 describe('loginUser', () => {
@@ -510,5 +511,17 @@ describe('deleteStatus', () => {
       )
     )
     await expect(deleteStatus(SLUG, PROJECT_ID, 'no-such-id')).rejects.toThrow()
+  })
+})
+
+describe('getProjectMembers', () => {
+  it('GETs /orgs/:slug/projects/:projectId/members and returns ProjectMember[]', async () => {
+    const result = await getProjectMembers('test-org', 'cccccccc-0000-4000-8000-000000000001')
+
+    expect(result).toHaveLength(1)
+    expect(result[0]?.userId).toBe(mockProjectMember.userId)
+    expect(result[0]?.name).toBe(mockProjectMember.name)
+    expect(result[0]?.avatarUrl).toBe(mockProjectMember.avatarUrl)
+    expect(result[0]?.role).toBe(mockProjectMember.role)
   })
 })

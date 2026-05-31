@@ -1,8 +1,15 @@
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useOutletContext, useParams } from 'react-router-dom'
 import { MoreHorizontal, FolderPlus, ArrowRight, LayoutGrid } from 'lucide-react'
+import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { useOrgStore } from '@/store/useOrgStore'
 import { useProjectStore } from '@/store/useProjectStore'
+import { useIssueStore } from '@/store/useIssueStore'
+import { useKeyboardShortcut } from '@/hooks/useKeyboardShortcut'
+import { ProjectCardSkeleton } from '@/components/blocks/ProjectCardSkeleton'
+import { QuickSearchModal } from './QuickSearchModal'
+import { calculateProjectStats } from '@/utils/projectStats'
 import type { Project } from '@/types'
 
 // =============================================================================
@@ -12,6 +19,8 @@ import type { Project } from '@/types'
 interface DashboardOutletContext {
   onNewProject: () => void
 }
+
+type FilterStatus = 'all' | 'todo' | 'in-progress' | 'done'
 
 // =============================================================================
 // HELPERS
@@ -35,21 +44,30 @@ function hexToRgb(hex: string): string {
 // PROJECT CARD
 // =============================================================================
 
+// =============================================================================
+// PROJECT CARD
+// =============================================================================
+
 interface ProjectCardProps {
   project: Project
-  onOpen:  (project: Project) => void
+  stats: ReturnType<typeof calculateProjectStats>
+  onOpen: (project: Project) => void
+  index: number
 }
 
-function ProjectCard({ project, onOpen }: ProjectCardProps) {
+function ProjectCard({ project, stats, onOpen, index }: ProjectCardProps) {
   const color = project.color ?? '#6366f1'
-  const rgb   = hexToRgb(color)
+  const rgb = hexToRgb(color)
 
   return (
-    <div
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.05 }}
       className="relative flex flex-col rounded-2xl p-5 cursor-pointer group transition-transform hover:-translate-y-0.5"
       style={{
-        background:  `linear-gradient(135deg, rgba(${rgb}, 0.18) 0%, rgba(${rgb}, 0.08) 100%)`,
-        border:      `1px solid rgba(${rgb}, 0.25)`,
+        background: `linear-gradient(135deg, rgba(${rgb}, 0.18) 0%, rgba(${rgb}, 0.08) 100%)`,
+        border: `1px solid rgba(${rgb}, 0.25)`,
       }}
       onClick={() => onOpen(project)}
     >
@@ -84,20 +102,43 @@ function ProjectCard({ project, onOpen }: ProjectCardProps) {
       </div>
 
       {/* Description */}
-      <p className="text-xs text-muted-foreground mb-5 line-clamp-1 min-h-[16px]">
+      <p className="text-xs text-muted-foreground mb-4 line-clamp-1 min-h-[16px]">
         {project.description ?? 'No description'}
       </p>
 
-      {/* Progress bar */}
+      {/* Stats row */}
+      {stats.total > 0 && (
+        <div className="mb-4 grid grid-cols-3 gap-2">
+          <div className="text-center">
+            <div className="text-sm font-semibold text-foreground">{stats.todo}</div>
+            <div className="text-[10px] text-muted-foreground">To Do</div>
+          </div>
+          <div className="text-center">
+            <div className="text-sm font-semibold text-foreground">{stats.inProgress}</div>
+            <div className="text-[10px] text-muted-foreground">In Progress</div>
+          </div>
+          <div className="text-center">
+            <div className="text-sm font-semibold text-foreground">{stats.completed}</div>
+            <div className="text-[10px] text-muted-foreground">Done</div>
+          </div>
+        </div>
+      )}
+
+      {/* Progress bar with animation */}
       <div className="mb-4">
         <div className="flex items-center justify-between mb-1.5">
           <span className="text-[11px] text-muted-foreground">Progress</span>
-          <span className="text-[11px] font-medium" style={{ color }}>—</span>
+          <span className="text-[11px] font-medium" style={{ color }}>
+            {stats.completionPercentage}%
+          </span>
         </div>
         <div className="h-1.5 rounded-full bg-white/10">
-          <div
-            className="h-1.5 rounded-full transition-all"
-            style={{ width: '0%', backgroundColor: color }}
+          <motion.div
+            className="h-1.5 rounded-full"
+            style={{ backgroundColor: color }}
+            initial={{ width: 0 }}
+            animate={{ width: `${stats.completionPercentage}%` }}
+            transition={{ duration: 0.8, ease: 'easeOut' }}
           />
         </div>
       </div>
@@ -112,7 +153,7 @@ function ProjectCard({ project, onOpen }: ProjectCardProps) {
           <ArrowRight size={11} />
         </div>
       </div>
-    </div>
+    </motion.div>
   )
 }
 
@@ -148,13 +189,69 @@ function EmptyState({ onNewProject }: { onNewProject: () => void }) {
 // =============================================================================
 
 export default function DashboardPage() {
-  const navigate              = useNavigate()
-  const { slug }              = useParams<{ slug: string }>()
-  const currentOrg            = useOrgStore((s) => s.currentOrg)
-  const projects              = useProjectStore((s) => s.projects)
-  const { onNewProject }      = useOutletContext<DashboardOutletContext>()
+  const navigate = useNavigate()
+  const { slug } = useParams<{ slug: string }>()
+  const currentOrg = useOrgStore((s) => s.currentOrg)
+  const projects = useProjectStore((s) => s.projects)
+  const issues = useIssueStore((s) => s.issues)
+  const statuses = useIssueStore((s) => s.statuses)
+  const { onNewProject } = useOutletContext<DashboardOutletContext>()
 
-  const active   = projects.filter((p) => !p.isArchived)
+  const [isSearchOpen, setIsSearchOpen] = useState(false)
+  const [selectedCardIndex, setSelectedCardIndex] = useState(0)
+  const cardRefs = useRef<(HTMLDivElement | null)[]>([])
+
+  // Keyboard shortcuts
+  useKeyboardShortcut('k', () => setIsSearchOpen(true), { ctrlKey: true })
+  useKeyboardShortcut('c', () => onNewProject(), { shiftKey: true })
+
+  // Arrow key navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const active = projects.filter((p) => !p.isArchived)
+      if (active.length === 0) return
+
+      const cols = Math.min(3, window.innerWidth >= 1024 ? 3 : window.innerWidth >= 640 ? 2 : 1)
+      let newIndex = selectedCardIndex
+
+      switch (e.key) {
+        case 'ArrowRight':
+          e.preventDefault()
+          newIndex = Math.min(selectedCardIndex + 1, active.length - 1)
+          setSelectedCardIndex(newIndex)
+          break
+        case 'ArrowLeft':
+          e.preventDefault()
+          newIndex = Math.max(selectedCardIndex - 1, 0)
+          setSelectedCardIndex(newIndex)
+          break
+        case 'ArrowDown':
+          e.preventDefault()
+          newIndex = Math.min(selectedCardIndex + cols, active.length - 1)
+          setSelectedCardIndex(newIndex)
+          break
+        case 'ArrowUp':
+          e.preventDefault()
+          newIndex = Math.max(selectedCardIndex - cols, 0)
+          setSelectedCardIndex(newIndex)
+          break
+        case 'Enter':
+          e.preventDefault()
+          navigate(`/${slug}/projects/${active[selectedCardIndex]!.id}/board`)
+          return
+        default:
+          return
+      }
+
+      cardRefs.current[newIndex]?.focus()
+      cardRefs.current[newIndex]?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [selectedCardIndex, projects, slug, navigate])
+
+  const active = projects.filter((p) => !p.isArchived)
   const archived = projects.filter((p) => p.isArchived)
 
   const openBoard = (project: Project) => {
@@ -165,88 +262,146 @@ export default function DashboardPage() {
     return <EmptyState onNewProject={onNewProject} />
   }
 
+  const isLoading = false // You can add actual loading state from your data fetching logic
+
   return (
-    <div className="flex flex-col h-full overflow-y-auto">
-      <div className="px-8 py-6 max-w-6xl w-full mx-auto">
-
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-xl font-bold text-foreground">Projects</h1>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              {currentOrg?.name ?? '—'}
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-muted-foreground">{formatMonth()}</span>
-            <Button
-              onClick={onNewProject}
-              className="h-8 px-3 text-sm bg-brand-primary hover:bg-brand-primary-hover text-white border-0 gap-1.5"
-            >
-              <FolderPlus size={14} />
-              New project
-            </Button>
-          </div>
-        </div>
-
-        {/* Stats row */}
-        <div className="flex items-center gap-8 mb-8 pb-6 border-b border-border">
-          <div className="flex flex-col gap-0.5">
-            <span className="text-2xl font-bold text-foreground">{projects.length}</span>
-            <span className="text-xs text-muted-foreground flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-brand-primary inline-block" />
-              Total Projects
-            </span>
-          </div>
-          <div className="flex flex-col gap-0.5">
-            <span className="text-2xl font-bold text-foreground">{active.length}</span>
-            <span className="text-xs text-muted-foreground flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />
-              Active
-            </span>
-          </div>
-          {archived.length > 0 && (
-            <div className="flex flex-col gap-0.5">
-              <span className="text-2xl font-bold text-foreground">{archived.length}</span>
-              <span className="text-xs text-muted-foreground flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground inline-block" />
-                Archived
-              </span>
+    <>
+      <div className="flex flex-col h-full overflow-y-auto">
+        <div className="px-8 py-6 max-w-6xl w-full mx-auto">
+          {/* Header */}
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h1 className="text-xl font-bold text-foreground">Projects</h1>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                {currentOrg?.name ?? '—'}
+              </p>
             </div>
-          )}
-
-          <div className="ml-auto flex items-center gap-1">
-            <button
-              type="button"
-              className="w-8 h-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-            >
-              <LayoutGrid size={16} />
-            </button>
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-muted-foreground">{formatMonth()}</span>
+              <Button
+                onClick={onNewProject}
+                className="h-8 px-3 text-sm bg-brand-primary hover:bg-brand-primary-hover text-white border-0 gap-1.5"
+                title="Shift+C"
+              >
+                <FolderPlus size={14} />
+                New project
+              </Button>
+            </div>
           </div>
-        </div>
 
-        {/* Project grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {active.map((project) => (
-            <ProjectCard key={project.id} project={project} onOpen={openBoard} />
-          ))}
-        </div>
+          {/* Stats row with filters */}
+          <div className="flex items-center justify-between gap-8 mb-8 pb-6 border-b border-border">
+            <div className="flex items-center gap-8">
+              <div className="flex flex-col gap-0.5">
+                <span className="text-2xl font-bold text-foreground">{projects.length}</span>
+                <span className="text-xs text-muted-foreground flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-brand-primary inline-block" />
+                  Total Projects
+                </span>
+              </div>
+              <div className="flex flex-col gap-0.5">
+                <span className="text-2xl font-bold text-foreground">{active.length}</span>
+                <span className="text-xs text-muted-foreground flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />
+                  Active
+                </span>
+              </div>
+              {archived.length > 0 && (
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-2xl font-bold text-foreground">{archived.length}</span>
+                  <span className="text-xs text-muted-foreground flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground inline-block" />
+                    Archived
+                  </span>
+                </div>
+              )}
+            </div>
 
-        {/* Archived section */}
-        {archived.length > 0 && (
-          <div className="mt-8">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">
-              Archived
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 opacity-50">
-              {archived.map((project) => (
-                <ProjectCard key={project.id} project={project} onOpen={openBoard} />
+            {/* Quick filters */}
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setIsSearchOpen(true)}
+                title="Cmd+K"
+                className="h-8 px-3 text-sm rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors font-medium"
+              >
+                Search
+              </button>
+              <button
+                type="button"
+                className="w-8 h-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              >
+                <LayoutGrid size={16} />
+              </button>
+            </div>
+          </div>
+
+          {/* Project grid */}
+          {isLoading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <ProjectCardSkeleton key={i} />
               ))}
             </div>
-          </div>
-        )}
+          ) : (
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {active.map((project, index) => {
+                  const stats = calculateProjectStats(issues, project.id, statuses)
+                  return (
+                    <div
+                      key={project.id}
+                      ref={(el) => {
+                        cardRefs.current[index] = el
+                      }}
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') openBoard(project)
+                      }}
+                      className={`outline-none rounded-2xl transition-shadow ${
+                        selectedCardIndex === index ? 'ring-2 ring-brand-primary' : ''
+                      }`}
+                    >
+                      <ProjectCard
+                        project={project}
+                        stats={stats}
+                        onOpen={openBoard}
+                        index={index}
+                      />
+                    </div>
+                  )
+                })}
+              </div>
 
+              {/* Archived section */}
+              {archived.length > 0 && (
+                <div className="mt-8">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">
+                    Archived
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 opacity-50">
+                    {archived.map((project, index) => {
+                      const stats = calculateProjectStats(issues, project.id, statuses)
+                      return (
+                        <ProjectCard
+                          key={project.id}
+                          project={project}
+                          stats={stats}
+                          onOpen={openBoard}
+                          index={active.length + index}
+                        />
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
       </div>
-    </div>
+
+      {/* Quick Search Modal */}
+      <QuickSearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
+    </>
   )
 }

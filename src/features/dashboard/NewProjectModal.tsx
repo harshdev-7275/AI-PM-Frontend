@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { X } from 'lucide-react'
 import { toast } from 'sonner'
+import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -103,32 +104,71 @@ export default function NewProjectModal({ isOpen, onClose }: NewProjectModalProp
 
   if (!isOpen) return null
 
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.05,
+        delayChildren: 0.1,
+      },
+    },
+  }
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 10 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: { type: 'spring', stiffness: 300, damping: 30 },
+    },
+  }
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-        onClick={onClose}
-      />
+    <AnimatePresence>
+      <div className="fixed inset-0 z-50 flex items-center justify-center">
+        {/* Backdrop */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+          onClick={onClose}
+        />
 
-      {/* Dialog */}
-      <div className="relative z-10 w-full max-w-md mx-4 bg-background border border-border rounded-xl shadow-xl">
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-          <h2 className="text-sm font-semibold text-foreground">New project</h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+        {/* Dialog */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95, y: -20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.95, y: -20 }}
+          transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+          className="relative z-10 w-full max-w-md mx-4 bg-background border border-border rounded-xl shadow-xl"
+        >
+          {/* Header */}
+          <motion.div
+            variants={itemVariants}
+            className="flex items-center justify-between px-5 py-4 border-b border-border"
           >
-            <X size={15} />
-          </button>
-        </div>
+            <h2 className="text-sm font-semibold text-foreground">New project</h2>
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+            >
+              <X size={15} />
+            </button>
+          </motion.div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4 px-5 py-4">
+          {/* Form */}
+          <motion.form
+            onSubmit={handleSubmit}
+            className="flex flex-col gap-4 px-5 py-4"
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+          >
           {/* Project name */}
-          <div className="flex flex-col gap-1.5">
+          <motion.div variants={itemVariants} className="flex flex-col gap-1.5">
             <Label className="text-xs text-muted-foreground">Project name</Label>
             <Input
               placeholder="e.g. Website Revamp"
@@ -138,10 +178,10 @@ export default function NewProjectModal({ isOpen, onClose }: NewProjectModalProp
               autoFocus
               className="h-8 text-sm"
             />
-          </div>
+          </motion.div>
 
           {/* Project key */}
-          <div className="flex flex-col gap-1.5">
+          <motion.div variants={itemVariants} className="flex flex-col gap-1.5">
             <Label className="text-xs text-muted-foreground">
               Project key
               <span className="ml-1 text-muted-foreground/60 font-normal">· used as issue prefix (WEB-1)</span>
@@ -154,10 +194,10 @@ export default function NewProjectModal({ isOpen, onClose }: NewProjectModalProp
               maxLength={6}
               className="h-8 text-sm font-mono uppercase"
             />
-          </div>
+          </motion.div>
 
           {/* Color picker */}
-          <div className="flex flex-col gap-1.5">
+          <motion.div variants={itemVariants} className="flex flex-col gap-1.5">
             <Label className="text-xs text-muted-foreground">Color</Label>
             <div className="flex items-center gap-2">
               {PRESET_COLORS.map((color) => (
@@ -179,10 +219,10 @@ export default function NewProjectModal({ isOpen, onClose }: NewProjectModalProp
                 </button>
               ))}
             </div>
-          </div>
+          </motion.div>
 
           {/* Description */}
-          <div className="flex flex-col gap-1.5">
+          <motion.div variants={itemVariants} className="flex flex-col gap-1.5">
             <Label className="text-xs text-muted-foreground">
               Description
               <span className="ml-1 text-muted-foreground/60 font-normal">· optional</span>
@@ -194,10 +234,10 @@ export default function NewProjectModal({ isOpen, onClose }: NewProjectModalProp
               rows={3}
               className="w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-brand-primary/40 focus:border-brand-primary/50 transition-colors"
             />
-          </div>
+          </motion.div>
 
           {/* Actions */}
-          <div className="flex items-center justify-end gap-2 pt-1">
+          <motion.div variants={itemVariants} className="flex items-center justify-end gap-2 pt-1">
             <Button
               type="button"
               variant="ghost"
@@ -213,9 +253,10 @@ export default function NewProjectModal({ isOpen, onClose }: NewProjectModalProp
             >
               {isSubmitting ? 'Creating…' : 'Create project'}
             </Button>
-          </div>
-        </form>
+          </motion.div>
+          </motion.form>
+        </motion.div>
       </div>
-    </div>
+    </AnimatePresence>
   )
 }

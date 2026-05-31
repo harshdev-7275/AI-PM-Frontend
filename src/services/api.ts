@@ -7,7 +7,7 @@ import type {
   AuthResponse, User, Org, Project, Issue, IssueStatus, WorkflowStatus,
   CreateIssueInput, UpdateIssueInput,
   IssueUser, IssueDetail, Comment, CommentAuthor, IssueHistoryEntry,
-  OrgMember, OrgMemberRole, InviteRole, Invitation,
+  OrgMember, OrgMemberRole, InviteRole, Invitation, ProjectMember,
 } from '@/types'
 
 // Thrown by deleteStatus when the backend returns 409 STATUS_HAS_ISSUES.
@@ -505,6 +505,28 @@ export const updateIssueStatus = async (
     { statusId },
   )
   return IssueSchema.parse(res.data)
+}
+
+// =============================================================================
+// PROJECT MEMBERS
+// =============================================================================
+
+const ProjectMemberSchema = z.object({
+  id:        z.string().uuid(),
+  userId:    z.string().uuid(),
+  name:      z.string(),
+  email:     z.string().email(),
+  avatarUrl: z.string().nullable(),
+  role:      z.string(),
+  addedAt:   z.string(),
+})
+
+export const getProjectMembers = async (
+  slug:      string,
+  projectId: string,
+): Promise<ProjectMember[]> => {
+  const res = await api.get(`/orgs/${slug}/projects/${projectId}/members`)
+  return z.array(ProjectMemberSchema).parse(res.data)
 }
 
 // =============================================================================

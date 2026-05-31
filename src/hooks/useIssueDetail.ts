@@ -9,13 +9,15 @@ import {
   updateComment        as updateCommentApi,
   deleteComment        as deleteCommentApi,
   getIssueHistory,
+  getProjectMembers,
 } from '@/services/api'
-import type { IssueDetail, Comment, IssueHistoryEntry, UpdateIssueInput } from '@/types'
+import type { IssueDetail, Comment, IssueHistoryEntry, UpdateIssueInput, ProjectMember } from '@/types'
 
 export function useIssueDetail(slug: string, projectId: string) {
   const [issue,     setIssue]     = useState<IssueDetail | null>(null)
   const [comments,  setComments]  = useState<Comment[]>([])
   const [history,   setHistory]   = useState<IssueHistoryEntry[]>([])
+  const [members,   setMembers]   = useState<ProjectMember[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [isSaving,  setIsSaving]  = useState(false)
 
@@ -30,14 +32,16 @@ export function useIssueDetail(slug: string, projectId: string) {
   const loadIssue = useCallback(async (issueId: string): Promise<void> => {
     setIsLoading(true)
     try {
-      const [fetchedIssue, fetchedComments, fetchedHistory] = await Promise.all([
+      const [fetchedIssue, fetchedComments, fetchedHistory, fetchedMembers] = await Promise.all([
         getIssue(slug, projectId, issueId),
         getComments(slug, projectId, issueId),
         getIssueHistory(slug, projectId, issueId),
+        getProjectMembers(slug, projectId),
       ])
       setIssue(fetchedIssue)
       setComments(fetchedComments)
       setHistory(fetchedHistory)
+      setMembers(fetchedMembers)
     } finally {
       setIsLoading(false)
     }
@@ -111,6 +115,7 @@ export function useIssueDetail(slug: string, projectId: string) {
     issue,
     comments,
     history,
+    members,
     isLoading,
     isSaving,
     loadIssue,

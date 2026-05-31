@@ -157,6 +157,16 @@ export interface Invitation {
   expiresAt: string
 }
 
+export interface ProjectMember {
+  id:        string
+  userId:    string
+  name:      string
+  email:     string
+  avatarUrl: string | null
+  role:      string
+  addedAt:   string
+}
+
 export interface IssueHistoryEntry {
   id:           string
   issueId:      string

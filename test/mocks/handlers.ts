@@ -1,5 +1,15 @@
 import { http, HttpResponse } from 'msw'
 
+export const mockProjectMember = {
+  id:        'dddddddd-0000-4000-8000-000000000001',
+  userId:    '123e4567-e89b-12d3-a456-426614174000',
+  name:      'Test User',
+  email:     'test@example.com',
+  avatarUrl: null as string | null,
+  role:      'member',
+  addedAt:   '2026-01-01T00:00:00.000Z',
+}
+
 export const mockOrgMember = {
   id:        'aaaaaaaa-0000-4000-8000-000000000001',
   userId:    '123e4567-e89b-12d3-a456-426614174000',
@@ -40,6 +50,51 @@ export const mockOrg = {
   plan:      'starter',
   isActive:  true,
   createdAt: '2026-01-01T00:00:00.000Z',
+}
+
+export const mockIssueUser = {
+  id:        '123e4567-e89b-12d3-a456-426614174000',
+  name:      'Test User',
+  email:     'test@example.com',
+  avatarUrl: null as string | null,
+}
+
+export const mockIssueDetail = {
+  id:             'eeeeeeee-0000-4000-8000-000000000001',
+  projectId:      'cccccccc-0000-4000-8000-000000000001',
+  orgId:          '456e7890-e89b-12d3-a456-426614174000',
+  number:         1,
+  title:          'Test Issue',
+  description:    null as string | null,
+  type:           'task',
+  priority:       'medium',
+  statusId:       'bbbbbbbb-0000-4000-8000-000000000001',
+  assigneeId:     null as string | null,
+  reporterId:     '123e4567-e89b-12d3-a456-426614174000',
+  parentId:       null as string | null,
+  sprintId:       null as string | null,
+  storyPoints:    null as number | null,
+  estimatedHours: null as number | null,
+  actualHours:    null as number | null,
+  dueDate:        null as string | null,
+  startedAt:      null as string | null,
+  completedAt:    null as string | null,
+  createdAt:      '2026-01-01T00:00:00.000Z',
+  updatedAt:      '2026-01-01T00:00:00.000Z',
+  status: { id: 'bbbbbbbb-0000-4000-8000-000000000001', name: 'Todo', color: '#6b7280', position: 1 },
+  assignee: null,
+  reporter: { id: '123e4567-e89b-12d3-a456-426614174000', name: 'Test User', email: 'test@example.com', avatarUrl: null },
+}
+
+export const mockComment = {
+  id:        'ffffffff-0000-4000-8000-000000000001',
+  issueId:   'eeeeeeee-0000-4000-8000-000000000001',
+  body:      'Test comment',
+  isEdited:  false,
+  parentId:  null as string | null,
+  author:    { id: '123e4567-e89b-12d3-a456-426614174000', name: 'Test User', avatarUrl: null },
+  createdAt: '2026-01-01T00:00:00.000Z',
+  updatedAt: '2026-01-01T00:00:00.000Z',
 }
 
 export const mockWorkflowStatus = {
@@ -108,6 +163,24 @@ export const handlers = [
 
   http.post('http://localhost:4000/orgs/invite/accept', () =>
     HttpResponse.json(mockOrg)
+  ),
+
+  // Project members
+  http.get('http://localhost:4000/orgs/:slug/projects/:projectId/members', () =>
+    HttpResponse.json([mockProjectMember])
+  ),
+
+  // Issues
+  http.get('http://localhost:4000/orgs/:slug/projects/:projectId/issues/:issueId', () =>
+    HttpResponse.json(mockIssueDetail)
+  ),
+
+  http.get('http://localhost:4000/orgs/:slug/projects/:projectId/issues/:issueId/comments', () =>
+    HttpResponse.json([mockComment])
+  ),
+
+  http.get('http://localhost:4000/orgs/:slug/projects/:projectId/issues/:issueId/history', () =>
+    HttpResponse.json([])
   ),
 
   // Workflow statuses
