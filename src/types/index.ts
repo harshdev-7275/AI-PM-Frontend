@@ -55,6 +55,14 @@ export interface IssueStatus {
   position: number
 }
 
+// Full status shape returned by the workflow management endpoints
+export interface WorkflowStatus extends IssueStatus {
+  projectId: string
+  isDefault: boolean
+  createdAt: string
+  updatedAt: string
+}
+
 export type IssueType = 'epic' | 'story' | 'task' | 'bug' | 'feature' | 'subtask'
 
 export type IssuePriority  = 'critical' | 'high' | 'medium' | 'low'

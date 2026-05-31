@@ -3,12 +3,13 @@ import { http, HttpResponse } from 'msw'
 import { server } from '../../test/mocks/server'
 import {
   mockUser, mockAuthResponse, mockOrg,
-  mockOrgMember, mockInvitation,
+  mockOrgMember, mockInvitation, mockWorkflowStatus,
 } from '../../test/mocks/handlers'
 import { useAuthStore } from '@/store/useAuthStore'
 import {
   loginUser, registerUser, logoutUser, refreshToken, getMe,
   inviteMember, getOrgMembers, updateMemberRole, removeMember, acceptInvitation,
+  getWorkflowStatuses, createStatus, updateStatus, deleteStatus, StatusHasIssuesError,
 } from './api'
 
 describe('loginUser', () => {
@@ -367,5 +368,147 @@ describe('Token refresh interceptor', () => {
 
     await expect(getMe('any-token')).rejects.toThrow()
     expect(refreshCalled).toBe(false)
+  })
+})
+
+// =============================================================================
+// WORKFLOW STATUSES
+// =============================================================================
+
+const SLUG       = 'test-org'
+const PROJECT_ID = 'cccccccc-0000-4000-8000-000000000001'
+const STATUS_ID  = 'bbbbbbbb-0000-4000-8000-000000000001'
+
+describe('getWorkflowStatuses', () => {
+  it('sends GET /orgs/:slug/projects/:projectId/statuses and returns WorkflowStatus[]', async () => {
+    const result = await getWorkflowStatuses(SLUG, PROJECT_ID)
+
+    expect(result).toHaveLength(1)
+    expect(result[0]?.id).toBe(mockWorkflowStatus.id)
+    expect(result[0]?.name).toBe(mockWorkflowStatus.name)
+    expect(result[0]?.color).toBe(mockWorkflowStatus.color)
+    expect(result[0]?.position).toBe(mockWorkflowStatus.position)
+    expect(result[0]?.isDefault).toBe(mockWorkflowStatus.isDefault)
+    expect(result[0]?.projectId).toBe(mockWorkflowStatus.projectId)
+  })
+
+  it('throws when org not found (404)', async () => {
+    server.use(
+      http.get('http://localhost:4000/orgs/:slug/projects/:projectId/statuses', () =>
+        HttpResponse.json({ error: 'ORG_NOT_FOUND' }, { status: 404 })
+      )
+    )
+    await expect(getWorkflowStatuses('no-org', PROJECT_ID)).rejects.toThrow()
+  })
+})
+
+describe('createStatus', () => {
+  it('sends POST with name and color and returns the created WorkflowStatus', async () => {
+    const result = await createStatus(SLUG, PROJECT_ID, 'QA Testing', '#8b5cf6')
+
+    expect(result.name).toBe('QA Testing')
+    expect(result.color).toBe('#8b5cf6')
+    expect(result.position).toBe(6)
+    expect(result.isDefault).toBe(false)
+  })
+
+  it('throws on 400 validation error (bad color)', async () => {
+    server.use(
+      http.post('http://localhost:4000/orgs/:slug/projects/:projectId/statuses', () =>
+        HttpResponse.json({ error: 'VALIDATION_ERROR' }, { status: 400 })
+      )
+    )
+    await expect(createStatus(SLUG, PROJECT_ID, 'Bad', 'notacolor')).rejects.toThrow()
+  })
+
+  it('throws on 403 forbidden (not a workflow manager)', async () => {
+    server.use(
+      http.post('http://localhost:4000/orgs/:slug/projects/:projectId/statuses', () =>
+        HttpResponse.json({ error: 'FORBIDDEN' }, { status: 403 })
+      )
+    )
+    await expect(createStatus(SLUG, PROJECT_ID, 'Hack', '#000000')).rejects.toThrow()
+  })
+})
+
+describe('updateStatus', () => {
+  it('sends PATCH with name and returns updated WorkflowStatus', async () => {
+    const result = await updateStatus(SLUG, PROJECT_ID, STATUS_ID, { name: 'In Development' })
+
+    expect(result.name).toBe('In Development')
+    expect(result.id).toBe(mockWorkflowStatus.id)
+  })
+
+  it('sends PATCH with color and returns updated WorkflowStatus', async () => {
+    server.use(
+      http.patch('http://localhost:4000/orgs/:slug/projects/:projectId/statuses/:statusId', () =>
+        HttpResponse.json({ ...mockWorkflowStatus, color: '#0ea5e9' })
+      )
+    )
+    const result = await updateStatus(SLUG, PROJECT_ID, STATUS_ID, { color: '#0ea5e9' })
+    expect(result.color).toBe('#0ea5e9')
+  })
+
+  it('sends PATCH with position and returns updated WorkflowStatus', async () => {
+    server.use(
+      http.patch('http://localhost:4000/orgs/:slug/projects/:projectId/statuses/:statusId', () =>
+        HttpResponse.json({ ...mockWorkflowStatus, position: 2 })
+      )
+    )
+    const result = await updateStatus(SLUG, PROJECT_ID, STATUS_ID, { position: 2 })
+    expect(result.position).toBe(2)
+  })
+
+  it('throws on 404 when status does not exist', async () => {
+    server.use(
+      http.patch('http://localhost:4000/orgs/:slug/projects/:projectId/statuses/:statusId', () =>
+        HttpResponse.json({ error: 'STATUS_NOT_FOUND' }, { status: 404 })
+      )
+    )
+    await expect(updateStatus(SLUG, PROJECT_ID, 'no-such-id', { name: 'Ghost' })).rejects.toThrow()
+  })
+})
+
+describe('deleteStatus', () => {
+  it('sends DELETE and resolves to undefined on success', async () => {
+    const result = await deleteStatus(SLUG, PROJECT_ID, STATUS_ID)
+    expect(result).toBeUndefined()
+  })
+
+  it('throws StatusHasIssuesError with issueCount when status has issues (409)', async () => {
+    server.use(
+      http.delete('http://localhost:4000/orgs/:slug/projects/:projectId/statuses/:statusId', () =>
+        HttpResponse.json(
+          { error: 'STATUS_HAS_ISSUES', message: 'Move issues first', issueCount: 3 },
+          { status: 409 },
+        )
+      )
+    )
+
+    try {
+      await deleteStatus(SLUG, PROJECT_ID, STATUS_ID)
+      expect.fail('should have thrown StatusHasIssuesError')
+    } catch (err) {
+      expect(err).toBeInstanceOf(StatusHasIssuesError)
+      expect((err as StatusHasIssuesError).issueCount).toBe(3)
+    }
+  })
+
+  it('throws a regular error when it is the last status (400)', async () => {
+    server.use(
+      http.delete('http://localhost:4000/orgs/:slug/projects/:projectId/statuses/:statusId', () =>
+        HttpResponse.json({ error: 'LAST_STATUS' }, { status: 400 })
+      )
+    )
+    await expect(deleteStatus(SLUG, PROJECT_ID, STATUS_ID)).rejects.toThrow()
+  })
+
+  it('throws on 404 when status does not exist', async () => {
+    server.use(
+      http.delete('http://localhost:4000/orgs/:slug/projects/:projectId/statuses/:statusId', () =>
+        HttpResponse.json({ error: 'STATUS_NOT_FOUND' }, { status: 404 })
+      )
+    )
+    await expect(deleteStatus(SLUG, PROJECT_ID, 'no-such-id')).rejects.toThrow()
   })
 })

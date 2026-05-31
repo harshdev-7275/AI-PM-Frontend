@@ -1,10 +1,11 @@
 import { NavLink, Outlet, useParams } from 'react-router-dom'
-import { Users, SlidersHorizontal } from 'lucide-react'
+import { Users, SlidersHorizontal, GitBranch } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const SETTINGS_NAV = [
-  { icon: SlidersHorizontal, label: 'General', path: '' },
-  { icon: Users,             label: 'Members', path: 'members' },
+  { icon: SlidersHorizontal, label: 'General',  path: '' },
+  { icon: Users,             label: 'Members',  path: 'members' },
+  { icon: GitBranch,         label: 'Workflow', path: 'workflow' },
 ] as const
 
 export default function SettingsPage() {

@@ -42,6 +42,17 @@ export const mockOrg = {
   createdAt: '2026-01-01T00:00:00.000Z',
 }
 
+export const mockWorkflowStatus = {
+  id:        'bbbbbbbb-0000-4000-8000-000000000001',
+  projectId: 'cccccccc-0000-4000-8000-000000000001',
+  name:      'Todo',
+  color:     '#6b7280',
+  position:  1,
+  isDefault: true,
+  createdAt: '2026-01-01T00:00:00.000Z',
+  updatedAt: '2026-01-01T00:00:00.000Z',
+}
+
 export const handlers = [
   http.post('http://localhost:4000/auth/login', () =>
     HttpResponse.json(mockAuthResponse)
@@ -97,5 +108,22 @@ export const handlers = [
 
   http.post('http://localhost:4000/orgs/invite/accept', () =>
     HttpResponse.json(mockOrg)
+  ),
+
+  // Workflow statuses
+  http.get('http://localhost:4000/orgs/:slug/projects/:projectId/statuses', () =>
+    HttpResponse.json([mockWorkflowStatus])
+  ),
+
+  http.post('http://localhost:4000/orgs/:slug/projects/:projectId/statuses', () =>
+    HttpResponse.json({ ...mockWorkflowStatus, name: 'QA Testing', color: '#8b5cf6', position: 6, isDefault: false }, { status: 201 })
+  ),
+
+  http.patch('http://localhost:4000/orgs/:slug/projects/:projectId/statuses/:statusId', () =>
+    HttpResponse.json({ ...mockWorkflowStatus, name: 'In Development' })
+  ),
+
+  http.delete('http://localhost:4000/orgs/:slug/projects/:projectId/statuses/:statusId', () =>
+    HttpResponse.json({ message: 'Status deleted' })
   ),
 ]

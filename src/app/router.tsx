@@ -11,6 +11,7 @@ const DashboardPage     = lazy(() => import('@/features/dashboard/DashboardPage'
 const BoardPage         = lazy(() => import('@/features/dashboard/pages/BoardPage'))
 const SettingsPage      = lazy(() => import('@/features/settings/pages/SettingsPage'))
 const MembersPage       = lazy(() => import('@/features/settings/pages/MembersPage'))
+const WorkflowPage      = lazy(() => import('@/features/settings/pages/WorkflowPage'))
 const AcceptInvitePage  = lazy(() => import('@/features/settings/pages/AcceptInvitePage'))
 
 export function AppRouter() {
@@ -35,7 +36,8 @@ export function AppRouter() {
           <Route path="dashboard" element={<DashboardPage />} />
           <Route path="projects/:projectId/board" element={<BoardPage />} />
           <Route path="settings" element={<SettingsPage />}>
-            <Route path="members" element={<MembersPage />} />
+            <Route path="members"   element={<MembersPage />} />
+            <Route path="workflow"  element={<WorkflowPage />} />
           </Route>
         </Route>
 

@@ -4,11 +4,21 @@ import { z } from 'zod'
 import { env } from '@/lib/env'
 import { useAuthStore } from '@/store/useAuthStore'
 import type {
-  AuthResponse, User, Org, Project, Issue, IssueStatus,
+  AuthResponse, User, Org, Project, Issue, IssueStatus, WorkflowStatus,
   CreateIssueInput, UpdateIssueInput,
   IssueUser, IssueDetail, Comment, CommentAuthor, IssueHistoryEntry,
   OrgMember, OrgMemberRole, InviteRole, Invitation,
 } from '@/types'
+
+// Thrown by deleteStatus when the backend returns 409 STATUS_HAS_ISSUES.
+// Catch this in the UI to show the "X issues use this status" warning instead
+// of a generic error toast.
+export class StatusHasIssuesError extends Error {
+  constructor(public readonly issueCount: number) {
+    super('STATUS_HAS_ISSUES')
+    this.name = 'StatusHasIssuesError'
+  }
+}
 
 
 export const api = axios.create({
@@ -92,6 +102,13 @@ const IssueStatusSchema = z.object({
   name:     z.string(),
   color:    z.string(),
   position: z.number(),
+})
+
+const WorkflowStatusSchema = IssueStatusSchema.extend({
+  projectId: z.string().uuid(),
+  isDefault: z.boolean(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
 })
 
 const IssueUserSchema = z.object({
@@ -488,5 +505,56 @@ export const updateIssueStatus = async (
     { statusId },
   )
   return IssueSchema.parse(res.data)
+}
+
+// =============================================================================
+// WORKFLOW STATUSES
+// =============================================================================
+
+export const getWorkflowStatuses = async (
+  slug:      string,
+  projectId: string,
+): Promise<WorkflowStatus[]> => {
+  const res = await api.get(`/orgs/${slug}/projects/${projectId}/statuses`)
+  return z.array(WorkflowStatusSchema).parse(res.data)
+}
+
+export const createStatus = async (
+  slug:      string,
+  projectId: string,
+  name:      string,
+  color:     string,
+): Promise<WorkflowStatus> => {
+  const res = await api.post(`/orgs/${slug}/projects/${projectId}/statuses`, { name, color })
+  return WorkflowStatusSchema.parse(res.data)
+}
+
+export const updateStatus = async (
+  slug:      string,
+  projectId: string,
+  statusId:  string,
+  input:     { name?: string; color?: string; position?: number },
+): Promise<WorkflowStatus> => {
+  const res = await api.patch(`/orgs/${slug}/projects/${projectId}/statuses/${statusId}`, input)
+  return WorkflowStatusSchema.parse(res.data)
+}
+
+export const deleteStatus = async (
+  slug:      string,
+  projectId: string,
+  statusId:  string,
+): Promise<void> => {
+  try {
+    await api.delete(`/orgs/${slug}/projects/${projectId}/statuses/${statusId}`)
+  } catch (err: unknown) {
+    if (
+      axios.isAxiosError(err) &&
+      err.response?.status === 409 &&
+      err.response.data?.error === 'STATUS_HAS_ISSUES'
+    ) {
+      throw new StatusHasIssuesError(err.response.data.issueCount as number)
+    }
+    throw err
+  }
 }
 
