@@ -3,7 +3,8 @@ import type { InternalAxiosRequestConfig } from 'axios'
 import { z } from 'zod'
 import { env } from '@/lib/env'
 import { useAuthStore } from '@/store/useAuthStore'
-import type { AuthResponse, User, Org, Project } from '@/types'
+import type { AuthResponse, User, Org, Project, Issue, IssueStatus,CreateIssueInput } from '@/types'
+
 
 export const api = axios.create({
   baseURL: env.VITE_API_BASE_URL,
@@ -62,6 +63,39 @@ const OrgSchema = z.object({
   isActive:  z.boolean(),
   createdAt: z.string(),
 })
+
+const IssueStatusSchema = z.object({
+  id:       z.string().uuid(),
+  name:     z.string(),
+  color:    z.string(),
+  position: z.number(),
+})
+
+const IssueSchema = z.object({
+  id:             z.string().uuid(),
+  projectId:      z.string().uuid(),
+  orgId:          z.string().uuid(),
+  number:         z.number(),
+  title:          z.string(),
+  description:    z.string().nullable(),
+  type:           z.string(),
+  priority:       z.string(),
+  statusId:       z.string().uuid(),
+  assigneeId:     z.string().uuid().nullable(),
+  reporterId:     z.string().uuid(),
+  parentId:       z.string().uuid().nullable(),
+  sprintId:       z.string().uuid().nullable(),
+  storyPoints:    z.number().nullable(),
+  estimatedHours: z.number().nullable(),
+  actualHours:    z.number().nullable(),
+  dueDate:        z.string().nullable(),
+  startedAt:      z.string().nullable(),
+  completedAt:    z.string().nullable(),
+  createdAt:      z.string(),
+  updatedAt:      z.string(),
+})
+
+
 
 // =============================================================================
 // TOKEN REFRESH INTERCEPTOR
@@ -240,3 +274,44 @@ export const createProject = async (
   const res = await api.post(`/orgs/${slug}/projects`, { name, key, description, icon, color })
   return ProjectSchema.parse(res.data)
 }
+
+export const getIssueStatuses = async (
+  slug:      string,
+  projectId: string,
+): Promise<IssueStatus[]> => {
+  const res = await api.get(`/orgs/${slug}/projects/${projectId}/issues/statuses`)
+  return z.array(IssueStatusSchema).parse(res.data)
+}
+
+ export const getIssues = async (
+    slug:      string,
+    projectId: string,
+  ): Promise<Issue[]> => {
+    const res = await api.get(`/orgs/${slug}/projects/${projectId}/issues`)
+    return z.array(IssueSchema).parse(res.data)
+  }
+
+  
+export const createIssue = async (
+    slug:      string,
+    projectId: string,
+    input:     CreateIssueInput,
+  ): Promise<Issue> => {
+    const res = await api.post(`/orgs/${slug}/projects/${projectId}/issues`,
+  input)
+    return IssueSchema.parse(res.data)
+  }
+
+export const updateIssueStatus = async (
+  slug:      string,
+  projectId: string,
+  issueId:   string,
+  statusId:  string,
+): Promise<Issue> => {
+  const res = await api.patch(
+    `/orgs/${slug}/projects/${projectId}/issues/${issueId}/status`,
+    { statusId },
+  )
+  return IssueSchema.parse(res.data)
+}
+

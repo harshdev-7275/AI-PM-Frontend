@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type { Project } from '@/types'
+import { useIssueStore } from '@/store/useIssueStore'
 
 interface ProjectState {
   projects:       Project[]
@@ -22,5 +23,8 @@ export const useProjectStore = create<ProjectState & ProjectActions>((set) => ({
 
   setProjects:       (projects) => set({ projects }),
   setCurrentProject: (project)  => set({ currentProject: project }),
-  clearProjects:     ()         => set(initialState),
+  clearProjects: () => {
+    useIssueStore.getState().clearIssues()
+    set(initialState)
+  },
 }))

@@ -46,3 +46,48 @@ export interface ApiError {
   message: string
   issues?: { field: string; message: string }[]
 }
+
+
+export interface IssueStatus {
+  id: string
+  name: string
+  color: string
+  position: number
+}
+
+export type IssueType = 'epic' | 'story' | 'task' | 'bug' | 'feature' | 'subtask'
+
+export type IssuePriority  = 'critical' | 'high' | 'medium' | 'low'
+
+export interface Issue {
+  id: string
+  projectId: string
+  orgId: string
+  number: number
+  title: string
+  description: string | null
+  type: IssueType
+  priority: IssuePriority
+  statusId: string
+  assigneeId: string | null
+  reporterId: string
+  parentId: string | null
+  sprintId: string | null
+  storyPoints: number | null
+  estimatedHours: number | null
+  actualHours: number | null
+  dueDate: string | null
+  startedAt: string | null
+  completedAt: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+
+export interface CreateIssueInput {
+    title:      string
+    type:       IssueType
+    priority:   IssuePriority
+    statusId:   string
+    assigneeId?: string
+  }

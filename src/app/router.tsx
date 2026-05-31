@@ -8,6 +8,7 @@ const LoginPage       = lazy(() => import('@/features/auth/pages/LoginPage'))
 const SignupPage      = lazy(() => import('@/features/auth/pages/SignupPage'))
 const DashboardLayout = lazy(() => import('@/features/dashboard/DashboardLayout'))
 const DashboardPage   = lazy(() => import('@/features/dashboard/DashboardPage'))
+const BoardPage       = lazy(() => import('@/features/dashboard/pages/BoardPage'))
 
 export function AppRouter() {
   return (
@@ -29,7 +30,7 @@ export function AppRouter() {
           }
         >
           <Route path="dashboard" element={<DashboardPage />} />
-          {/* Future routes (issues, sprints, etc.) added here */}
+          <Route path="projects/:projectId/board" element={<BoardPage />} />
         </Route>
 
         {/* Fallback */}
