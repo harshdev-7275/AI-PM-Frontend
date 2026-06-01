@@ -20,8 +20,6 @@ interface DashboardOutletContext {
   onNewProject: () => void
 }
 
-type FilterStatus = 'all' | 'todo' | 'in-progress' | 'done'
-
 // =============================================================================
 // HELPERS
 // =============================================================================
