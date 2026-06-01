@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { NavLink, Outlet, useNavigate, useParams } from 'react-router-dom'
 import {
   BarChart2,
@@ -14,6 +14,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { useOrgStore } from '@/store/useOrgStore'
 import { useProject } from '@/hooks/useProject'
+import { DashboardLoadingSkeleton } from '@/components/blocks/DashboardLoadingSkeleton'
 import NewProjectModal from './NewProjectModal'
 
 // =============================================================================
@@ -237,14 +238,22 @@ function Topbar() {
 
 export default function DashboardLayout() {
   const [isNewProjectModalOpen, setIsNewProjectModalOpen] = useState(false)
-  const { slug }                 = useParams<{ slug: string }>()
-  const { projects, loadProjects } = useProject()
+  const [isInitialLoading, setIsInitialLoading] = useState(true)
+  const { slug } = useParams<{ slug: string }>()
+  const { projects, loadProjects, isLoading } = useProject()
 
   // Load projects once when the org slug changes.
   // Guard prevents redundant fetches if projects are already loaded for this org.
   useEffect(() => {
-    if (slug && projects.length === 0) void loadProjects(slug)
+    if (slug && projects.length === 0) {
+      void loadProjects(slug).finally(() => setIsInitialLoading(false))
+    } else if (projects.length > 0) {
+      setIsInitialLoading(false)
+    }
   }, [slug]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Show skeleton if still loading initially OR data is still being fetched
+  const shouldShowSkeleton = isInitialLoading || (projects.length === 0 && isLoading)
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
@@ -254,7 +263,13 @@ export default function DashboardLayout() {
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
         <Topbar />
         <main className="flex-1 overflow-y-auto">
-          <Outlet context={{ onNewProject: () => setIsNewProjectModalOpen(true) }} />
+          {shouldShowSkeleton ? (
+            <DashboardLoadingSkeleton />
+          ) : (
+            <Suspense fallback={<DashboardLoadingSkeleton />}>
+              <Outlet context={{ onNewProject: () => setIsNewProjectModalOpen(true) }} />
+            </Suspense>
+          )}
         </main>
       </div>
 

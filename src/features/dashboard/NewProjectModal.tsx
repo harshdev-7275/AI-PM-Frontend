@@ -101,9 +101,6 @@ export default function NewProjectModal({ isOpen, onClose }: NewProjectModalProp
       setIsSubmitting(false)
     }
   }
-
-  if (!isOpen) return null
-
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -125,9 +122,10 @@ export default function NewProjectModal({ isOpen, onClose }: NewProjectModalProp
   }
 
   return (
-    <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center">
-        {/* Backdrop */}
+    <AnimatePresence mode="wait">
+      {isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          {/* Backdrop */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -257,6 +255,7 @@ export default function NewProjectModal({ isOpen, onClose }: NewProjectModalProp
           </motion.form>
         </motion.div>
       </div>
+      )}
     </AnimatePresence>
   )
 }

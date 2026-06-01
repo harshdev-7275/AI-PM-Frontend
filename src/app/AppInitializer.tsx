@@ -1,4 +1,5 @@
 import { useEffect, type ReactNode } from 'react'
+import { Loader2 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useAuthStore } from '@/store/useAuthStore'
 
@@ -16,7 +17,11 @@ export function AppInitializer({ children }: AppInitializerProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  if (isLoading) return null
+  if (isLoading) return (
+    <div className="flex h-screen items-center justify-center">
+      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+    </div>
+  )
 
   return <>{children}</>
 }

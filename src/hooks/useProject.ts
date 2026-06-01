@@ -1,34 +1,68 @@
+import { useState } from 'react'
 import { useProjectStore } from '@/store/useProjectStore'
 import { getProjects, createProject as createProjectApi } from '@/services/api'
 import type { Project } from '@/types'
 
+interface ProjectHookState {
+  isLoading: boolean
+  error: string | null
+}
+
 export function useProject() {
   const { projects, currentProject, setProjects, setCurrentProject } = useProjectStore()
+  const [state, setState] = useState<ProjectHookState>({
+    isLoading: false,
+    error: null,
+  })
 
   const loadProjects = async (slug: string): Promise<void> => {
-    const data = await getProjects(slug)
-    setProjects(data)
+    setState({ isLoading: true, error: null })
+    try {
+      const data = await getProjects(slug)
+      setProjects(data)
+      setState({ isLoading: false, error: null })
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Failed to load projects'
+      setState({ isLoading: false, error: errorMsg })
+      throw err
+    }
   }
 
   const createProject = async (
-    slug:         string,
-    name:         string,
-    key:          string,
+    slug: string,
+    name: string,
+    key: string,
     description?: string,
-    icon?:        string,
-    color?:       string,
+    icon?: string,
+    color?: string,
   ): Promise<Project> => {
-    const project = await createProjectApi(slug, name, key, description, icon, color)
-    // Append to current list — use getState() to avoid stale closure
-    const current = useProjectStore.getState().projects
-    setProjects([...current, project])
-    setCurrentProject(project)
-    return project
+    setState({ isLoading: true, error: null })
+    try {
+      const project = await createProjectApi(slug, name, key, description, icon, color)
+      // Append to current list — use getState() to avoid stale closure
+      const current = useProjectStore.getState().projects
+      setProjects([...current, project])
+      setCurrentProject(project)
+      setState({ isLoading: false, error: null })
+      return project
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Failed to create project'
+      setState({ isLoading: false, error: errorMsg })
+      throw err
+    }
   }
 
   const switchProject = (project: Project): void => {
     setCurrentProject(project)
   }
 
-  return { projects, currentProject, loadProjects, createProject, switchProject }
+  return { 
+    projects, 
+    currentProject, 
+    loadProjects, 
+    createProject, 
+    switchProject,
+    isLoading: state.isLoading,
+    error: state.error,
+  }
 }
