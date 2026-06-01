@@ -6,7 +6,7 @@ import { useAuthStore } from '@/store/useAuthStore'
 import type {
   AuthResponse, User, Org, Project, Issue, IssueStatus, WorkflowStatus,
   CreateIssueInput, UpdateIssueInput,
-  IssueUser, IssueDetail, Comment, CommentAuthor, IssueHistoryEntry,
+  IssueDetail, Comment, IssueHistoryEntry,
   OrgMember, OrgMemberRole, InviteRole, Invitation, ProjectMember, Sprint,
 } from '@/types'
 
@@ -14,9 +14,12 @@ import type {
 // Catch this in the UI to show the "X issues use this status" warning instead
 // of a generic error toast.
 export class StatusHasIssuesError extends Error {
-  constructor(public readonly issueCount: number) {
+  readonly issueCount: number
+
+  constructor(issueCount: number) {
     super('STATUS_HAS_ISSUES')
     this.name = 'StatusHasIssuesError'
+    this.issueCount = issueCount
   }
 }
 
@@ -154,6 +157,9 @@ const IssueHistoryEntrySchema = z.object({
   }),
 })
 
+const IssueTypeSchema = z.enum(['epic', 'story', 'task', 'bug', 'feature', 'subtask'])
+const IssuePrioritySchema = z.enum(['critical', 'high', 'medium', 'low'])
+
 const IssueSchema = z.object({
   id:             z.string().uuid(),
   projectId:      z.string().uuid(),
@@ -161,8 +167,8 @@ const IssueSchema = z.object({
   number:         z.number(),
   title:          z.string(),
   description:    z.string().nullable(),
-  type:           z.string(),
-  priority:       z.string(),
+  type:           IssueTypeSchema,
+  priority:       IssuePrioritySchema,
   statusId:       z.string().uuid(),
   assigneeId:     z.string().uuid().nullable(),
   reporterId:     z.string().uuid(),

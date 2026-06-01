@@ -119,11 +119,9 @@ export function SprintPanel({
                 issue={issue}
                 projectKey={projectKey}
                 onClick={onIssueClick}
-                onRemove={
-                  onRemoveIssue && sprint.status !== 'completed'
-                    ? () => onRemoveIssue(sprint.id, issue.id)
-                    : undefined
-                }
+                {...(onRemoveIssue && sprint.status !== 'completed' && {
+                  onRemove: () => onRemoveIssue(sprint.id, issue.id),
+                })}
               />
             ))
           )}

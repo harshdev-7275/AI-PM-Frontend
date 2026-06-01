@@ -44,7 +44,7 @@ function getInitials(name: string): string {
 interface IssueCardContentProps {
   issue:         Issue
   projectKey:    string
-  assigneeName?: string
+  assigneeName?: string | undefined
   isDragging?:   boolean
 }
 

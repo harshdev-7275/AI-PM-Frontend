@@ -34,14 +34,14 @@ const initials = (name: string) =>
 const fmtDate = (iso: string) =>
   new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 
-const timeAgo = (iso: string) => {
-  const m = Math.floor((Date.now() - new Date(iso).getTime()) / 60000)
-  if (m < 1)  return 'just now'
-  if (m < 60) return `${m}m ago`
-  const h = Math.floor(m / 60)
-  if (h < 24) return `${h}h ago`
-  return `${Math.floor(h / 24)}d ago`
-}
+// const timeAgo = (iso: string) => {
+//   const m = Math.floor((Date.now() - new Date(iso).getTime()) / 60000)
+//   if (m < 1)  return 'just now'
+//   if (m < 60) return `${m}m ago`
+//   const h = Math.floor(m / 60)
+//   if (h < 24) return `${h}h ago`
+//   return `${Math.floor(h / 24)}d ago`
+// }
 
 // =============================================================================
 // SMALL SHARED PIECES
@@ -167,7 +167,7 @@ function AssigneeDropdown({
       >
         {assignee ? (
           <>
-            <Avatar name={assignee.name} url={assignee.avatarUrl} />
+            <Avatar name={assignee.name} url={assignee.avatarUrl ?? null} />
             <span className="text-sm text-foreground truncate">{assignee.name}</span>
           </>
         ) : (

@@ -116,7 +116,9 @@ export default function BacklogPage() {
             <SprintSettings
               project={currentProject}
               sprintCount={sprints.length}
-              onSave={(input) => updateProject(slug ?? '', projectId ?? '', input)}
+              onSave={async (input) => {
+                await updateProject(slug ?? '', projectId ?? '', input)
+              }}
             />
           )}
 

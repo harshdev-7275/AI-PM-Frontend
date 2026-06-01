@@ -357,7 +357,9 @@ export default function BoardPage() {
         onClose={() => setModalOpen(false)}
         defaultStatusId={modalStatusId}
         statuses={statuses}
-        onSubmit={handleCreateIssue}
+        onSubmit={async (input) => {
+          await handleCreateIssue(input)
+        }}
       />
     </div>
   )
