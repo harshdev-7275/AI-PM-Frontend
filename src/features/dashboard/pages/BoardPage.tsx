@@ -187,7 +187,14 @@ export default function BoardPage() {
   const [activeIssue,     setActiveIssue]     = useState<Issue | null>(null)
   const [selectedIssueId, setSelectedIssueId] = useState<string | null>(null)
   const [isSlideOverOpen, setIsSlideOverOpen] = useState(false)
-  const [sprintFilter,    setSprintFilter]    = useState<string>('all')
+  const activeSprint = sprints.find((s) => s.status === 'active') ?? null
+
+  const [sprintFilter, setSprintFilter] = useState<string>('all')
+
+  // Default to active sprint when sprints first load
+  useEffect(() => {
+    if (activeSprint && sprintFilter === 'all') setSprintFilter(activeSprint.id)
+  }, [activeSprint?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const filteredIssues =
     sprintFilter === 'all'    ? issues :
@@ -237,7 +244,30 @@ export default function BoardPage() {
             <span className="text-xs font-mono text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
               {currentProject?.key ?? ''}
             </span>
-            <span className="text-xs text-muted-foreground">· Backlog</span>
+            {activeSprint ? (
+              <>
+                <span className="text-xs text-muted-foreground">·</span>
+                <span className="text-xs font-medium text-blue-500">{activeSprint.name}</span>
+                {activeSprint.endDate && (
+                  <span className="text-xs text-muted-foreground">
+                    {Math.max(0, Math.ceil(
+                      (new Date(activeSprint.endDate).getTime() - Date.now()) / 86_400_000
+                    ))} days left
+                  </span>
+                )}
+              </>
+            ) : (
+              <>
+                <span className="text-xs text-muted-foreground">· No active sprint</span>
+                <button
+                  type="button"
+                  onClick={() => navigate(`/${slug}/projects/${projectId}/backlog`)}
+                  className="text-xs text-brand-primary hover:underline"
+                >
+                  Go to Backlog
+                </button>
+              </>
+            )}
           </div>
 
           <div className="flex items-center gap-2">
