@@ -8,9 +8,10 @@ interface ProjectState {
 }
 
 interface ProjectActions {
-  setProjects:       (projects: Project[]) => void
-  setCurrentProject: (project: Project) => void
-  clearProjects:     () => void
+  setProjects:          (projects: Project[]) => void
+  setCurrentProject:    (project: Project) => void
+  patchCurrentProject:  (patch: Partial<Project>) => void
+  clearProjects:        () => void
 }
 
 const initialState: ProjectState = {
@@ -23,6 +24,13 @@ export const useProjectStore = create<ProjectState & ProjectActions>((set) => ({
 
   setProjects:       (projects) => set({ projects }),
   setCurrentProject: (project)  => set({ currentProject: project }),
+  patchCurrentProject: (patch) =>
+    set((s) => ({
+      currentProject: s.currentProject ? { ...s.currentProject, ...patch } : null,
+      projects: s.projects.map((p) =>
+        p.id === s.currentProject?.id ? { ...p, ...patch } : p
+      ),
+    })),
   clearProjects: () => {
     useIssueStore.getState().clearIssues()
     set(initialState)

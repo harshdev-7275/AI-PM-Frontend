@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useIssueStore } from '@/store/useIssueStore'
 import { useProjectStore } from '@/store/useProjectStore'
@@ -6,13 +6,15 @@ import { useBoardEvents } from '@/hooks/useBoardEvents'
 import {
   getIssueStatuses,
   getIssues,
+  getSprints,
   createIssue as createIssueApi,
   updateIssueStatus as updateIssueStatusApi,
 } from '@/services/api'
-import type { CreateIssueInput, Issue } from '@/types'
+import type { CreateIssueInput, Issue, Sprint } from '@/types'
 
 export function useBoardData() {
   const { slug, projectId } = useParams<{ slug: string; projectId: string }>()
+  const [sprints, setSprints] = useState<Sprint[]>([])
 
   // Ensure currentProject is set even on direct URL load
   const projects          = useProjectStore((s) => s.projects)
@@ -46,12 +48,14 @@ export function useBoardData() {
     const load = async () => {
       setLoading(true)
       try {
-        const [fetchedStatuses, fetchedIssues] = await Promise.all([
+        const [fetchedStatuses, fetchedIssues, fetchedSprints] = await Promise.all([
           getIssueStatuses(slug, projectId),
           getIssues(slug, projectId),
+          getSprints(slug, projectId),
         ])
         setStatuses(fetchedStatuses)
         setIssues(fetchedIssues)
+        setSprints(fetchedSprints)
       } finally {
         setLoading(false)
       }
@@ -84,6 +88,7 @@ export function useBoardData() {
   return {
     issues,
     statuses,
+    sprints,
     isLoading,
     handleDragEnd,
     handleCreateIssue,

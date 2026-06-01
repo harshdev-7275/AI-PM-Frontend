@@ -4,12 +4,14 @@ import { AnimatePresence } from 'framer-motion'
 import { Plus } from 'lucide-react'
 import { useBacklog } from '@/hooks/useBacklog'
 import { useProjectStore } from '@/store/useProjectStore'
+import { useProject } from '@/hooks/useProject'
 import { Button } from '@/components/ui/button'
 import { IssueSlideOver } from '../components/IssueSlideOver'
 import { SprintPanel } from '../components/SprintPanel'
 import { BacklogIssueRow } from '../components/BacklogIssueRow'
 import { CreateSprintModal } from '../components/CreateSprintModal'
 import { CreateIssueModal } from '../components/CreateIssueModal'
+import { SprintSettings } from '../components/SprintSettings'
 
 // =============================================================================
 // CONSTANTS
@@ -27,6 +29,7 @@ export default function BacklogPage() {
   const { slug, projectId } = useParams<{ slug: string; projectId: string }>()
 
   const currentProject = useProjectStore((s) => s.currentProject)
+  const { updateProject } = useProject()
 
   const {
     sprints, backlogIssues, statuses, isLoading, isCreatingSprint, allIssues,
@@ -108,6 +111,15 @@ export default function BacklogPage() {
         </div>
       ) : (
         <div className="flex-1 overflow-y-auto px-6 py-4 flex flex-col gap-4">
+          {/* Sprint cadence settings */}
+          {currentProject && (
+            <SprintSettings
+              project={currentProject}
+              sprintCount={sprints.length}
+              onSave={(input) => updateProject(slug ?? '', projectId ?? '', input)}
+            />
+          )}
+
           {/* Sprint panels */}
           {sprints.map((sprint) => (
             <SprintPanel

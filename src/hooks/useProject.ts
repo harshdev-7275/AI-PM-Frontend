@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useProjectStore } from '@/store/useProjectStore'
-import { getProjects, createProject as createProjectApi } from '@/services/api'
+import { getProjects, createProject as createProjectApi, updateProject as updateProjectApi } from '@/services/api'
+import type { UpdateProjectInput } from '@/services/api'
 import type { Project } from '@/types'
 
 interface ProjectHookState {
@@ -9,7 +10,7 @@ interface ProjectHookState {
 }
 
 export function useProject() {
-  const { projects, currentProject, setProjects, setCurrentProject } = useProjectStore()
+  const { projects, currentProject, setProjects, setCurrentProject, patchCurrentProject } = useProjectStore()
   const [state, setState] = useState<ProjectHookState>({
     isLoading: false,
     error: null,
@@ -56,11 +57,22 @@ export function useProject() {
     setCurrentProject(project)
   }
 
-  return { 
-    projects, 
-    currentProject, 
-    loadProjects, 
-    createProject, 
+  const updateProject = async (
+    slug:      string,
+    projectId: string,
+    input:     UpdateProjectInput,
+  ): Promise<Project> => {
+    const updated = await updateProjectApi(slug, projectId, input)
+    patchCurrentProject(updated)
+    return updated
+  }
+
+  return {
+    projects,
+    currentProject,
+    loadProjects,
+    createProject,
+    updateProject,
     switchProject,
     isLoading: state.isLoading,
     error: state.error,

@@ -81,13 +81,16 @@ export function useBacklog(slug: string, projectId: string) {
   }, [slug, projectId])
 
   const handleCompleteSprint = useCallback(async (sprintId: string): Promise<void> => {
-    await completeSprint(slug, projectId, sprintId)
-    setState((s) => ({
-      ...s,
-      sprints: s.sprints.map((sp) =>
-        sp.id === sprintId ? { ...sp, status: 'completed' as const } : sp
-      ),
-    }))
+    const { completedSprint, nextSprint } = await completeSprint(slug, projectId, sprintId)
+    setState((s) => {
+      const updatedSprints = s.sprints.map((sp) =>
+        sp.id === sprintId ? { ...sp, ...completedSprint } : sp
+      )
+      return {
+        ...s,
+        sprints: nextSprint ? [...updatedSprints, nextSprint] : updatedSprints,
+      }
+    })
   }, [slug, projectId])
 
   // Patches sprintId on the issue — backlogIssues updates automatically.

@@ -57,16 +57,21 @@ const LogoutResponseSchema = z.object({
 })
 
 const ProjectSchema = z.object({
-  id:          z.string().uuid(),
-  orgId:       z.string().uuid(),
-  name:        z.string(),
-  key:         z.string(),
-  description: z.string().nullable(),
-  icon:        z.string().nullable(),
-  color:       z.string().nullable(),
-  isArchived:  z.boolean(),
-  createdBy:   z.string().uuid(),
-  createdAt:   z.string(),
+  id:                z.string().uuid(),
+  orgId:             z.string().uuid(),
+  name:              z.string(),
+  key:               z.string(),
+  description:       z.string().nullable(),
+  icon:              z.string().nullable(),
+  color:             z.string().nullable(),
+  isArchived:        z.boolean(),
+  createdBy:         z.string().uuid(),
+  createdAt:         z.string(),
+  cadenceType:       z.enum(['none', 'weekly', 'biweekly', 'monthly']).default('none'),
+  cadenceStartDay:   z.number().nullable().default(null),
+  cadenceDuration:   z.number().nullable().default(null),
+  cadenceAutoCreate: z.boolean().default(false),
+  cadenceNaming:     z.string().nullable().default(null),
 })
 
 const OrgSchema = z.object({
@@ -397,6 +402,23 @@ export const createProject = async (
   return ProjectSchema.parse(res.data)
 }
 
+export interface UpdateProjectInput {
+  cadenceType?:       Project['cadenceType']
+  cadenceStartDay?:   number | null
+  cadenceDuration?:   number | null
+  cadenceAutoCreate?: boolean
+  cadenceNaming?:     string | null
+}
+
+export const updateProject = async (
+  slug:      string,
+  projectId: string,
+  input:     UpdateProjectInput,
+): Promise<Project> => {
+  const res = await api.patch(`/orgs/${slug}/projects/${projectId}`, input)
+  return ProjectSchema.parse(res.data)
+}
+
 export const getIssueStatuses = async (
   slug:      string,
   projectId: string,
@@ -632,13 +654,20 @@ export const startSprint = async (
   return SprintSchema.parse(res.data)
 }
 
+const CompleteSprintResultSchema = z.object({
+  completedSprint: SprintSchema,
+  nextSprint:      SprintSchema.nullable(),
+})
+
+export type CompleteSprintResult = z.infer<typeof CompleteSprintResultSchema>
+
 export const completeSprint = async (
   slug:      string,
   projectId: string,
   sprintId:  string,
-): Promise<Sprint> => {
+): Promise<CompleteSprintResult> => {
   const res = await api.post(`/orgs/${slug}/projects/${projectId}/sprints/${sprintId}/complete`)
-  return SprintSchema.parse(res.data)
+  return CompleteSprintResultSchema.parse(res.data)
 }
 
 export const addIssueToSprint = async (
