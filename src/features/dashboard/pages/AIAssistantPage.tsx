@@ -60,7 +60,7 @@ export default function AIAssistantPage() {
   // Set first project as default context on mount
   useEffect(() => {
     if (projects.length > 0 && !selectedProjectId) {
-      const first = projects[0]
+      const first = projects[0]!
       setSelectedProjectId(first.id)
       setProject(first.id)
     }

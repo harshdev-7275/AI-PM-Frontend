@@ -1,6 +1,6 @@
 import { useAuthStore } from '@/store/useAuthStore'
 import { useOrgStore } from '@/store/useOrgStore'
-import { useChatStore } from '@/store/useChatStore'
+import { useChatStore, type ChatMessage } from '@/store/useChatStore'
 import { sendChatMessage } from '@/services/api'
 
 export function useChat() {
@@ -18,11 +18,14 @@ export function useChat() {
 
     try {
       const response = await sendChatMessage(text, user.id, currentOrg.slug, currentProjectId)
-      addMessage({
+      const message: Omit<ChatMessage, 'id' | 'timestamp'> = {
         role:    'assistant',
         content: response.result?.message ?? response.error ?? 'No response',
-        intent:  response.intent ?? undefined,
-      })
+      }
+      if (response.intent) {
+        message.intent = response.intent
+      }
+      addMessage(message)
     } finally {
       setLoading(false)
     }
