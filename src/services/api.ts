@@ -695,9 +695,7 @@ export const removeIssueFromSprint = async (
 }
 
 // =============================================================================
-// AI SERVICE
-// Dev: calls AI service directly with X-Internal-Secret.
-// Prod: route through Node.js proxy so secret never reaches the browser.
+// AI SERVICE — proxied through Node.js (secret never reaches the browser)
 // =============================================================================
 
 const ChatResponseSchema = z.object({
@@ -710,15 +708,11 @@ export type ChatResponse = z.infer<typeof ChatResponseSchema>
 
 export const sendChatMessage = async (
   message:   string,
-  userId:    string,
+  _userId:   string,
   orgSlug:   string,
   projectId: string,
 ): Promise<ChatResponse> => {
-  const res = await axios.post(
-    `${env.VITE_AI_SERVICE_URL}/chat`,
-    { message, user_id: userId, org_slug: orgSlug, project_id: projectId },
-    { headers: { 'X-Internal-Secret': env.VITE_INTERNAL_SECRET } },
-  )
+  const res = await api.post('/api/chat', { message, orgSlug, projectId })
   return ChatResponseSchema.parse(res.data)
 }
 
