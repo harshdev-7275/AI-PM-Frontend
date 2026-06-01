@@ -694,3 +694,31 @@ export const removeIssueFromSprint = async (
   await api.delete(`/orgs/${slug}/projects/${projectId}/sprints/${sprintId}/issues/${issueId}`)
 }
 
+// =============================================================================
+// AI SERVICE
+// Dev: calls AI service directly with X-Internal-Secret.
+// Prod: route through Node.js proxy so secret never reaches the browser.
+// =============================================================================
+
+const ChatResponseSchema = z.object({
+  intent: z.string().nullable(),
+  result: z.object({ message: z.string() }).nullable(),
+  error:  z.string().nullable(),
+})
+
+export type ChatResponse = z.infer<typeof ChatResponseSchema>
+
+export const sendChatMessage = async (
+  message:   string,
+  userId:    string,
+  orgSlug:   string,
+  projectId: string,
+): Promise<ChatResponse> => {
+  const res = await axios.post(
+    `${env.VITE_AI_SERVICE_URL}/chat`,
+    { message, user_id: userId, org_slug: orgSlug, project_id: projectId },
+    { headers: { 'X-Internal-Secret': env.VITE_INTERNAL_SECRET } },
+  )
+  return ChatResponseSchema.parse(res.data)
+}
+

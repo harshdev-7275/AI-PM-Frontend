@@ -25,7 +25,7 @@ const NAV_ITEMS = [
   { icon: Kanban,    label: 'Boards',       path: 'dashboard' },
   { icon: CircleDot, label: 'Issues',       path: 'issues'    },
   { icon: Zap,       label: 'Sprints',      path: 'sprints'   },
-  { icon: Bot,       label: 'AI Assistant', path: 'ai'        },
+  { icon: Bot,       label: 'AI Assistant', path: 'ai-assistant' },
   { icon: BarChart2, label: 'Analytics',    path: 'analytics' },
 ] as const
 

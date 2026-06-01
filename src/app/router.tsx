@@ -11,6 +11,7 @@ const DashboardLayout   = lazy(() => import('@/features/dashboard/DashboardLayou
 const DashboardPage     = lazy(() => import('@/features/dashboard/DashboardPage'))
 const BoardPage         = lazy(() => import('@/features/dashboard/pages/BoardPage'))
 const BacklogPage       = lazy(() => import('@/features/dashboard/pages/BacklogPage'))
+const AIAssistantPage   = lazy(() => import('@/features/dashboard/pages/AIAssistantPage'))
 const SettingsPage      = lazy(() => import('@/features/settings/pages/SettingsPage'))
 const MembersPage       = lazy(() => import('@/features/settings/pages/MembersPage'))
 const WorkflowPage      = lazy(() => import('@/features/settings/pages/WorkflowPage'))
@@ -38,6 +39,7 @@ export function AppRouter() {
           <Route path="dashboard" element={<DashboardPage />} />
           <Route path="projects/:projectId/board"   element={<BoardPage />} />
           <Route path="projects/:projectId/backlog" element={<BacklogPage />} />
+          <Route path="ai-assistant" element={<AIAssistantPage />} />
           <Route path="settings" element={<SettingsPage />}>
             <Route path="members"   element={<MembersPage />} />
             <Route path="workflow"  element={<WorkflowPage />} />
