@@ -1,4 +1,5 @@
 import { lazy, Suspense } from 'react'
+import { Loader2 } from 'lucide-react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { ProtectedRoute } from './ProtectedRoute'
 import { PublicRoute } from './PublicRoute'
@@ -9,6 +10,7 @@ const SignupPage        = lazy(() => import('@/features/auth/pages/SignupPage'))
 const DashboardLayout   = lazy(() => import('@/features/dashboard/DashboardLayout'))
 const DashboardPage     = lazy(() => import('@/features/dashboard/DashboardPage'))
 const BoardPage         = lazy(() => import('@/features/dashboard/pages/BoardPage'))
+const BacklogPage       = lazy(() => import('@/features/dashboard/pages/BacklogPage'))
 const SettingsPage      = lazy(() => import('@/features/settings/pages/SettingsPage'))
 const MembersPage       = lazy(() => import('@/features/settings/pages/MembersPage'))
 const WorkflowPage      = lazy(() => import('@/features/settings/pages/WorkflowPage'))
@@ -16,7 +18,7 @@ const AcceptInvitePage  = lazy(() => import('@/features/settings/pages/AcceptInv
 
 export function AppRouter() {
   return (
-    <Suspense fallback={<div className="flex h-screen items-center justify-center" />}>
+    <Suspense fallback={<div className="flex h-screen items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>}>
       <Routes>
         {/* Public — redirect authenticated users to their org dashboard */}
         <Route path="/login"  element={<PublicRoute><LoginPage /></PublicRoute>} />
@@ -34,7 +36,8 @@ export function AppRouter() {
           }
         >
           <Route path="dashboard" element={<DashboardPage />} />
-          <Route path="projects/:projectId/board" element={<BoardPage />} />
+          <Route path="projects/:projectId/board"   element={<BoardPage />} />
+          <Route path="projects/:projectId/backlog" element={<BacklogPage />} />
           <Route path="settings" element={<SettingsPage />}>
             <Route path="members"   element={<MembersPage />} />
             <Route path="workflow"  element={<WorkflowPage />} />

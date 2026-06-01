@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
 import { AnimatePresence } from 'framer-motion'
 import { Plus } from 'lucide-react'
 import {
@@ -13,6 +14,7 @@ import {
 import { useBoardData } from '@/hooks/useBoardData'
 import { useDragScroll } from '@/hooks/useDragScroll'
 import { useProjectStore } from '@/store/useProjectStore'
+import { BoardLoadingSkeleton } from '@/components/blocks/BoardLoadingSkeleton'
 import { BoardColumn } from '../components/BoardColumn'
 import { IssueCardContent } from '../components/IssueCard'
 import { CreateIssueModal } from '../components/CreateIssueModal'
@@ -21,36 +23,20 @@ import { Button } from '@/components/ui/button'
 import type { Issue } from '@/types'
 
 // =============================================================================
-// TABS
+// TABS & SKELETON
 // =============================================================================
 
 const TABS = ['Board', 'Backlog', 'Timeline', 'List'] as const
 type Tab = (typeof TABS)[number]
 
 // =============================================================================
-// SKELETON
-// =============================================================================
-
-function BoardSkeleton() {
-  return (
-    <div className="flex gap-4 p-6">
-      {[1, 2, 3].map((i) => (
-        <div key={i} className="w-72 shrink-0 rounded-xl bg-muted/50 border border-border/60 p-3 flex flex-col gap-2">
-          <div className="h-4 w-24 rounded bg-muted animate-pulse" />
-          {[1, 2, 3].map((j) => (
-            <div key={j} className="h-20 rounded-lg bg-muted animate-pulse" />
-          ))}
-        </div>
-      ))}
-    </div>
-  )
-}
-
-// =============================================================================
 // BOARD PAGE
 // =============================================================================
 
 export default function BoardPage() {
+  const navigate   = useNavigate()
+  const { slug, projectId } = useParams<{ slug: string; projectId: string }>()
+
   const { statuses, issues, isLoading, handleDragEnd, handleCreateIssue } = useBoardData()
   const currentProject = useProjectStore((s) => s.currentProject)
 
@@ -123,7 +109,13 @@ export default function BoardPage() {
             <button
               key={tab}
               type="button"
-              onClick={() => setActiveTab(tab)}
+              onClick={() => {
+                if (tab === 'Backlog') {
+                  navigate(`/${slug}/projects/${projectId}/backlog`)
+                } else {
+                  setActiveTab(tab)
+                }
+              }}
               className={[
                 'px-3 py-2 text-sm font-medium border-b-2 transition-colors',
                 activeTab === tab
@@ -145,7 +137,7 @@ export default function BoardPage() {
           {activeTab} — Coming soon
         </div>
       ) : isLoading ? (
-        <BoardSkeleton />
+        <BoardLoadingSkeleton />
       ) : statuses.length === 0 ? (
         <div className="flex flex-1 items-center justify-center">
           <p className="text-sm text-muted-foreground">No statuses configured for this project.</p>

@@ -7,7 +7,7 @@ import type {
   AuthResponse, User, Org, Project, Issue, IssueStatus, WorkflowStatus,
   CreateIssueInput, UpdateIssueInput,
   IssueUser, IssueDetail, Comment, CommentAuthor, IssueHistoryEntry,
-  OrgMember, OrgMemberRole, InviteRole, Invitation, ProjectMember,
+  OrgMember, OrgMemberRole, InviteRole, Invitation, ProjectMember, Sprint,
 } from '@/types'
 
 // Thrown by deleteStatus when the backend returns 409 STATUS_HAS_ISSUES.
@@ -578,5 +578,84 @@ export const deleteStatus = async (
     }
     throw err
   }
+}
+
+// =============================================================================
+// SPRINTS
+// =============================================================================
+
+const SprintSchema = z.object({
+  id:        z.string().uuid(),
+  projectId: z.string().uuid(),
+  name:      z.string(),
+  goal:      z.string().nullable(),
+  status:    z.enum(['planned', 'active', 'completed']),
+  startDate: z.string().nullable(),
+  endDate:   z.string().nullable(),
+  createdAt: z.string(),
+})
+
+export const getSprints = async (
+  slug:      string,
+  projectId: string,
+): Promise<Sprint[]> => {
+  const res = await api.get(`/orgs/${slug}/projects/${projectId}/sprints`)
+  return z.array(SprintSchema).parse(res.data)
+}
+
+// Date inputs return YYYY-MM-DD; backend requires full ISO 8601 with offset.
+const toISODateTime = (date: string) => `${date}T00:00:00Z`
+
+export const createSprint = async (
+  slug:       string,
+  projectId:  string,
+  name:       string,
+  goal?:      string,
+  startDate?: string,
+  endDate?:   string,
+): Promise<Sprint> => {
+  const res = await api.post(`/orgs/${slug}/projects/${projectId}/sprints`, {
+    name,
+    goal,
+    ...(startDate ? { startDate: toISODateTime(startDate) } : {}),
+    ...(endDate   ? { endDate:   toISODateTime(endDate)   } : {}),
+  })
+  return SprintSchema.parse(res.data)
+}
+
+export const startSprint = async (
+  slug:      string,
+  projectId: string,
+  sprintId:  string,
+): Promise<Sprint> => {
+  const res = await api.post(`/orgs/${slug}/projects/${projectId}/sprints/${sprintId}/start`)
+  return SprintSchema.parse(res.data)
+}
+
+export const completeSprint = async (
+  slug:      string,
+  projectId: string,
+  sprintId:  string,
+): Promise<Sprint> => {
+  const res = await api.post(`/orgs/${slug}/projects/${projectId}/sprints/${sprintId}/complete`)
+  return SprintSchema.parse(res.data)
+}
+
+export const addIssueToSprint = async (
+  slug:      string,
+  projectId: string,
+  sprintId:  string,
+  issueId:   string,
+): Promise<void> => {
+  await api.post(`/orgs/${slug}/projects/${projectId}/sprints/${sprintId}/issues/${issueId}`)
+}
+
+export const removeIssueFromSprint = async (
+  slug:      string,
+  projectId: string,
+  sprintId:  string,
+  issueId:   string,
+): Promise<void> => {
+  await api.delete(`/orgs/${slug}/projects/${projectId}/sprints/${sprintId}/issues/${issueId}`)
 }
 
