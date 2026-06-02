@@ -265,7 +265,7 @@ export default function DashboardPage() {
   return (
     <>
       <div className="flex flex-col h-full overflow-y-auto">
-        <div className="px-8 py-6 max-w-6xl w-full mx-auto">
+        <div className="px-8 py-6 w-full">
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
             <div>
@@ -336,14 +336,22 @@ export default function DashboardPage() {
 
           {/* Project grid */}
           {isLoading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div
+              data-testid="project-grid"
+              className="grid gap-4"
+              style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))' }}
+            >
               {[1, 2, 3, 4, 5, 6].map((i) => (
                 <ProjectCardSkeleton key={i} />
               ))}
             </div>
           ) : (
             <>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div
+                data-testid="project-grid"
+                className="grid gap-4"
+                style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))' }}
+              >
                 {active.map((project, index) => {
                   const stats = calculateProjectStats(issues, project.id, statuses)
                   return (
@@ -377,7 +385,10 @@ export default function DashboardPage() {
                   <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">
                     Archived
                   </p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 opacity-50">
+                  <div
+                    className="grid gap-4 opacity-50"
+                    style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))' }}
+                  >
                     {archived.map((project, index) => {
                       const stats = calculateProjectStats(issues, project.id, statuses)
                       return (
