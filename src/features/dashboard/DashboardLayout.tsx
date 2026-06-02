@@ -10,10 +10,13 @@ import {
   FolderKanban,
   Plus,
   Search,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { useOrgStore } from '@/store/useOrgStore'
 import { useProject } from '@/hooks/useProject'
+import { useSidebarStore } from '@/store/useSidebarStore'
 import { DashboardLoadingSkeleton } from '@/components/blocks/DashboardLoadingSkeleton'
 import { ProfileMenu } from './components/ProfileMenu'
 import NewProjectModal from './NewProjectModal'
@@ -31,59 +34,6 @@ const NAV_ITEMS = [
 ] as const
 
 // =============================================================================
-// ICON RAIL
-// =============================================================================
-
-function IconRail() {
-  const { slug }   = useParams<{ slug: string }>()
-  const currentOrg = useOrgStore((s) => s.currentOrg)
-  const initials   = currentOrg?.name.slice(0, 2).toUpperCase() ?? '??'
-
-  return (
-    <aside className="w-12 flex flex-col items-center py-3 gap-1 border-r border-sidebar-border bg-sidebar shrink-0">
-      <nav className="flex flex-col items-center gap-1 flex-1">
-        {NAV_ITEMS.map(({ icon: Icon, label, path }) => (
-          <NavLink
-            key={path}
-            to={`/${slug}/${path}`}
-            title={label}
-            className={({ isActive }) =>
-              [
-                'w-9 h-9 flex items-center justify-center rounded-lg transition-colors',
-                isActive
-                  ? 'bg-brand-primary text-white'
-                  : 'text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground',
-              ].join(' ')
-            }
-          >
-            <Icon size={18} />
-          </NavLink>
-        ))}
-      </nav>
-
-      <div className="flex flex-col items-center gap-2">
-        <NavLink
-          to={`/${slug}/settings/members`}
-          title="Settings"
-          className={({ isActive }) =>
-            [
-              'w-9 h-9 flex items-center justify-center rounded-lg transition-colors',
-              isActive
-                ? 'bg-brand-primary text-white'
-                : 'text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground',
-            ].join(' ')
-          }
-        >
-          <Settings size={18} />
-        </NavLink>
-
-        <ProfileMenu initials={initials} />
-      </div>
-    </aside>
-  )
-}
-
-// =============================================================================
 // SIDEBAR
 // =============================================================================
 
@@ -96,117 +46,156 @@ function Sidebar({ onNewProject }: SidebarProps) {
   const navigate   = useNavigate()
   const currentOrg = useOrgStore((s) => s.currentOrg)
   const { projects } = useProject()
+  const initials   = currentOrg?.name.slice(0, 2).toUpperCase() ?? '??'
+
+  const isCollapsed   = useSidebarStore((s) => s.isCollapsed)
+  const toggleSidebar = useSidebarStore((s) => s.toggle)
+
+  // Expanded = 224px, collapsed = 56px (icon-only)
+  const widthClass = isCollapsed ? 'w-14' : 'w-56'
 
   return (
-    <aside className="w-56 flex flex-col border-r border-sidebar-border bg-sidebar shrink-0 overflow-hidden">
-      {/* Org name + plan */}
-      <div className="px-3 pt-4 pb-2">
-        <p className="text-sm font-semibold text-sidebar-foreground truncate">
-          {currentOrg?.name ?? '—'}
-        </p>
-        <p className="text-[11px] text-muted-foreground capitalize">
-          {currentOrg?.plan ?? 'starter'} Plan
-        </p>
+    <aside
+      data-collapsed={isCollapsed}
+      className={`${widthClass} flex flex-col border-r border-sidebar-border bg-sidebar shrink-0 overflow-hidden transition-[width] duration-200`}
+    >
+      {/* Header: org name + collapse toggle (right) */}
+      <div className="px-3 pt-4 pb-2 flex items-start justify-between gap-2">
+        {!isCollapsed && (
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-sidebar-foreground truncate">
+              {currentOrg?.name ?? '—'}
+            </p>
+            <p className="text-[11px] text-muted-foreground capitalize">
+              {currentOrg?.plan ?? 'starter'} Plan
+            </p>
+          </div>
+        )}
+        <button
+          type="button"
+          onClick={toggleSidebar}
+          aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          className={`shrink-0 w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors ${isCollapsed ? 'mx-auto' : ''}`}
+        >
+          {isCollapsed ? <PanelLeftOpen size={15} /> : <PanelLeftClose size={15} />}
+        </button>
       </div>
 
-      {/* Search */}
-      <div className="px-3 pb-3">
-        <div className="relative">
-          <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Search…"
-            className="h-7 pl-7 text-xs bg-sidebar-accent border-sidebar-border focus-visible:ring-brand-primary/40"
-          />
+      {/* Search — hidden when collapsed */}
+      {!isCollapsed && (
+        <div className="px-3 pb-3">
+          <div className="relative">
+            <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search…"
+              className="h-7 pl-7 text-xs bg-sidebar-accent border-sidebar-border focus-visible:ring-brand-primary/40"
+            />
+          </div>
         </div>
-      </div>
+      )}
 
-      <div className="h-px bg-sidebar-border mx-3" />
+      {!isCollapsed && <div className="h-px bg-sidebar-border mx-3" />}
 
-      {/* Nav text items */}
-      <nav className="flex flex-col gap-0.5 px-2 py-2">
+      {/* Primary nav — labels hide when collapsed */}
+      <nav className="flex flex-col gap-0.5 px-2 py-2" aria-label="Primary">
         {NAV_ITEMS.map(({ icon: Icon, label, path }) => (
           <NavLink
             key={path}
             to={`/${slug}/${path}`}
+            title={isCollapsed ? label : undefined}
             className={({ isActive }) =>
               [
-                'flex items-center gap-2.5 px-2 py-1.5 rounded-md text-sm transition-colors',
+                'flex items-center gap-2.5 rounded-md text-sm transition-colors',
+                isCollapsed ? 'justify-center px-0 py-1.5' : 'px-2 py-1.5',
                 isActive
                   ? 'bg-brand-primary/10 text-brand-primary font-medium'
                   : 'text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground',
               ].join(' ')
             }
           >
-            <Icon size={15} />
-            {label}
+            <Icon size={15} className="shrink-0" />
+            {!isCollapsed && <span className="truncate">{label}</span>}
           </NavLink>
         ))}
       </nav>
 
-      <div className="h-px bg-sidebar-border mx-3 my-1" />
+      {!isCollapsed && <div className="h-px bg-sidebar-border mx-3 my-1" />}
 
-      {/* Projects section */}
-      <div className="flex flex-col flex-1 overflow-hidden px-2">
-        <div className="px-2 py-1.5">
-          <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
-            Projects
-          </span>
+      {/* Projects section — hidden when collapsed */}
+      {!isCollapsed && (
+        <div className="flex flex-col flex-1 overflow-hidden px-2">
+          <div className="px-2 py-1.5">
+            <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+              Projects
+            </span>
+          </div>
+
+          <div className="flex-1 overflow-y-auto">
+            {projects.length === 0 ? (
+              <p className="px-2 py-3 text-xs text-muted-foreground text-center">
+                No projects yet
+              </p>
+            ) : (
+              <div className="flex flex-col gap-0.5">
+                {projects.map((project) => (
+                  <button
+                    key={project.id}
+                    type="button"
+                    onClick={() => navigate(`/${slug}/projects/${project.id}/board`)}
+                    className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors text-left"
+                  >
+                    <span
+                      className="w-2 h-2 rounded-full shrink-0"
+                      style={{ backgroundColor: project.color ?? 'var(--brand-primary)' }}
+                    />
+                    <span className="truncate">{project.name}</span>
+                    <span className="ml-auto text-[10px] text-muted-foreground/60 font-mono shrink-0">
+                      {project.key}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
+      )}
 
-        <div className="flex-1 overflow-y-auto">
-          {projects.length === 0 ? (
-            <p className="px-2 py-3 text-xs text-muted-foreground text-center">
-              No projects yet
-            </p>
-          ) : (
-            <div className="flex flex-col gap-0.5">
-              {projects.map((project) => (
-                <button
-                  key={project.id}
-                  type="button"
-                  onClick={() => navigate(`/${slug}/projects/${project.id}/board`)}
-                  className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors text-left"
-                >
-                  <span
-                    className="w-2 h-2 rounded-full shrink-0"
-                    style={{ backgroundColor: project.color ?? 'var(--brand-primary)' }}
-                  />
-                  <span className="truncate">{project.name}</span>
-                  <span className="ml-auto text-[10px] text-muted-foreground/60 font-mono shrink-0">
-                    {project.key}
-                  </span>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
+      {/* When collapsed we still need a flex spacer so the bottom block stays at the bottom */}
+      {isCollapsed && <div className="flex-1" />}
 
-      {/* Bottom links */}
+      {/* Bottom links — labels hide when collapsed */}
       <div className="p-3 border-t border-sidebar-border flex flex-col gap-0.5">
         <NavLink
           to={`/${slug}/settings/members`}
+          title={isCollapsed ? 'Settings' : undefined}
           className={({ isActive }) =>
             [
-              'flex items-center gap-2.5 px-2 py-1.5 rounded-md text-sm transition-colors',
+              'flex items-center gap-2.5 rounded-md text-sm transition-colors',
+              isCollapsed ? 'justify-center px-0 py-1.5' : 'px-2 py-1.5',
               isActive
                 ? 'bg-brand-primary/10 text-brand-primary font-medium'
                 : 'text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground',
             ].join(' ')
           }
         >
-          <Settings size={15} />
-          Settings
+          <Settings size={15} className="shrink-0" />
+          {!isCollapsed && <span className="truncate">Settings</span>}
         </NavLink>
 
         <button
           type="button"
           onClick={onNewProject}
-          className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors"
+          title={isCollapsed ? 'New project' : undefined}
+          className={`w-full flex items-center gap-2 rounded-md text-sm text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors ${isCollapsed ? 'justify-center px-0 py-1.5' : 'px-2 py-1.5'}`}
         >
-          <Plus size={15} />
-          New project
+          <Plus size={15} className="shrink-0" />
+          {!isCollapsed && <span className="truncate">New project</span>}
         </button>
+      </div>
+
+      {/* Profile menu — always visible, avatar shows in both modes */}
+      <div className={`${isCollapsed ? 'px-2 pb-3 flex justify-center' : 'px-3 pb-3 pt-1'}`}>
+        <ProfileMenu initials={initials} />
       </div>
     </aside>
   )
@@ -256,7 +245,6 @@ export default function DashboardLayout() {
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
-      <IconRail />
       <Sidebar onNewProject={() => setIsNewProjectModalOpen(true)} />
 
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
