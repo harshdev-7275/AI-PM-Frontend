@@ -712,7 +712,7 @@ export const sendChatMessage = async (
   orgSlug:   string,
   projectId: string,
 ): Promise<ChatResponse> => {
-  const res = await api.post('/api/chat', { message, orgSlug, projectId })
+  const res = await api.post('/api/chat', { message, orgSlug, projectId }, { timeout: 60_000 })
   return ChatResponseSchema.parse(res.data)
 }
 
