@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react'
 import { Loader2 } from 'lucide-react'
 import { Routes, Route, Navigate } from 'react-router-dom'
+import { RouteErrorBoundary } from '@/components/primitives'
 import { ProtectedRoute } from './ProtectedRoute'
 import { PublicRoute } from './PublicRoute'
 import { OrgRoute } from './OrgRoute'
@@ -22,8 +23,16 @@ export function AppRouter() {
     <Suspense fallback={<div className="flex h-screen items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>}>
       <Routes>
         {/* Public — redirect authenticated users to their org dashboard */}
-        <Route path="/login"  element={<PublicRoute><LoginPage /></PublicRoute>} />
-        <Route path="/signup" element={<PublicRoute><SignupPage /></PublicRoute>} />
+        <Route path="/login"  element={
+          <RouteErrorBoundary label="the login page">
+            <PublicRoute><LoginPage /></PublicRoute>
+          </RouteErrorBoundary>
+        } />
+        <Route path="/signup" element={
+          <RouteErrorBoundary label="the signup page">
+            <PublicRoute><SignupPage /></PublicRoute>
+          </RouteErrorBoundary>
+        } />
 
         {/* Org-scoped shell — OrgRoute loads + validates the org for every child */}
         <Route

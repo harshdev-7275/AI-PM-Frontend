@@ -1,4 +1,4 @@
-import { Component, type ReactNode } from 'react'
+import { Component, useEffect, useState, type ReactNode } from 'react'
 import { BrowserRouter } from 'react-router-dom'
 import { Toaster } from 'sonner'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -20,7 +20,21 @@ interface ProvidersProps {
 }
 
 function ToasterWithTheme() {
+  const theme = useTheme((state) => state.theme)
   const isDark = useTheme((state) => state.isDark())
+
+  // When theme === 'system', the OS preference change is handled by
+  // ThemeProvider (which toggles <html>'s .dark class) but does not
+  // re-trigger zustand subscribers. Mirror the matchMedia here so the
+  // Toaster re-renders immediately on OS preference flips.
+  const [, setOsTick] = useState(0)
+  useEffect(() => {
+    if (theme !== 'system' || typeof window === 'undefined') return
+    const mq = window.matchMedia('(prefers-color-scheme: dark)')
+    const onChange = (): void => setOsTick((n) => n + 1)
+    mq.addEventListener('change', onChange)
+    return () => mq.removeEventListener('change', onChange)
+  }, [theme])
 
   return (
     <Toaster
