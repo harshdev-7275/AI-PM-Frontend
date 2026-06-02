@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input'
 import { useOrgStore } from '@/store/useOrgStore'
 import { useProject } from '@/hooks/useProject'
 import { DashboardLoadingSkeleton } from '@/components/blocks/DashboardLoadingSkeleton'
+import { ProfileMenu } from './components/ProfileMenu'
 import NewProjectModal from './NewProjectModal'
 
 // =============================================================================
@@ -76,9 +77,7 @@ function IconRail() {
           <Settings size={18} />
         </NavLink>
 
-        <div className="w-8 h-8 rounded-full bg-brand-primary flex items-center justify-center text-white text-[11px] font-semibold select-none">
-          {initials}
-        </div>
+        <ProfileMenu initials={initials} />
       </div>
     </aside>
   )
