@@ -27,6 +27,7 @@ import {
   SidebarTrigger,
 } from '@/components/ui/sidebar'
 import { useOrgStore } from '@/store/useOrgStore'
+import { useAuthStore } from '@/store/useAuthStore'
 import { useProject } from '@/hooks/useProject'
 import { DashboardLoadingSkeleton } from '@/components/blocks/DashboardLoadingSkeleton'
 import { ProfileMenu } from './components/ProfileMenu'
@@ -52,8 +53,8 @@ function DashboardSidebar({ onNewProject }: { onNewProject: () => void }) {
   const { slug }   = useParams<{ slug: string }>()
   const navigate   = useNavigate()
   const currentOrg = useOrgStore((s) => s.currentOrg)
+  const user       = useAuthStore((s) => s.user)
   const { projects } = useProject()
-  const initials   = currentOrg?.name.slice(0, 2).toUpperCase() ?? '??'
 
   return (
     <Sidebar collapsible="icon">
@@ -157,11 +158,9 @@ function DashboardSidebar({ onNewProject }: { onNewProject: () => void }) {
         </SidebarGroup>
       </SidebarContent>
 
-      {/* Profile menu in footer */}
+      {/* Profile menu in footer — full-width row with name + email */}
       <SidebarFooter>
-        <div className="flex items-center justify-center p-1">
-          <ProfileMenu initials={initials} />
-        </div>
+        <ProfileMenu user={user} />
       </SidebarFooter>
     </Sidebar>
   )

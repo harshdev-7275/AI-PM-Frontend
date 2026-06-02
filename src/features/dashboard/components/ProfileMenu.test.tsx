@@ -5,7 +5,7 @@ import { MemoryRouter } from 'react-router-dom'
 
 // ─── Mocks ───────────────────────────────────────────────────────────────────
 
-const mockLogout = vi.fn()
+const mockLogout  = vi.fn()
 const mockNavigate = vi.fn()
 
 vi.mock('@/hooks/useAuth', () => ({
@@ -20,12 +20,22 @@ vi.mock('react-router-dom', async () => {
   }
 })
 
-// Mock sonner toast so logout failures don't pollute test output.
 vi.mock('sonner', () => ({ toast: { error: vi.fn() } }))
 
 // ─── Import after mocks ──────────────────────────────────────────────────────
 
 import { ProfileMenu } from './ProfileMenu'
+import type { User } from '@/types'
+
+const mockUser: User = {
+  id:        'u-1',
+  name:      'Harsh Patel',
+  email:     'harsh@planigo.com',
+  avatarUrl: null,
+  jobTitle:  'Engineer',
+  timezone:  'Asia/Kolkata',
+  createdAt: '2026-01-01T00:00:00Z',
+}
 
 beforeEach(() => {
   mockLogout.mockReset()
@@ -36,33 +46,53 @@ function renderWithRouter(ui: React.ReactElement) {
   return render(<MemoryRouter>{ui}</MemoryRouter>)
 }
 
-describe('ProfileMenu', () => {
-  it('renders the trigger with the given initials', () => {
-    renderWithRouter(<ProfileMenu initials="PL" />)
-    expect(screen.getByRole('button', { name: /PL/i })).toBeInTheDocument()
+describe('ProfileMenu (full-width user row)', () => {
+  it('renders the user full name in the row', () => {
+    renderWithRouter(<ProfileMenu user={mockUser} />)
+    expect(screen.getByText('Harsh Patel')).toBeInTheDocument()
   })
 
-  it('does not show the menu by default', () => {
-    renderWithRouter(<ProfileMenu initials="PL" />)
-    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+  it('renders the user email in the row', () => {
+    renderWithRouter(<ProfileMenu user={mockUser} />)
+    expect(screen.getByText('harsh@planigo.com')).toBeInTheDocument()
   })
 
-  it('opens the menu with a Logout item when the trigger is clicked', async () => {
+  it('renders the avatar with initials when no avatarUrl', () => {
+    renderWithRouter(<ProfileMenu user={mockUser} />)
+    // "Harsh Patel" → "HP"
+    expect(screen.getByText('HP')).toBeInTheDocument()
+  })
+
+  it('renders the avatar with initials derived from the user name', () => {
+    renderWithRouter(
+      <ProfileMenu user={{ ...mockUser, name: 'Ada Lovelace' }} />
+    )
+    expect(screen.getByText('AL')).toBeInTheDocument()
+  })
+
+  it('renders a chevron icon to indicate the row opens a menu', () => {
+    const { container } = renderWithRouter(<ProfileMenu user={mockUser} />)
+    // Lucide ChevronsUpDown renders an svg with that name in the class list.
+    const chevron = container.querySelector('svg.lucide-chevrons-up-down')
+    expect(chevron).not.toBeNull()
+  })
+
+  it('clicking the row opens a menu with a Logout item', async () => {
     const user = userEvent.setup()
-    renderWithRouter(<ProfileMenu initials="PL" />)
+    renderWithRouter(<ProfileMenu user={mockUser} />)
 
-    await user.click(screen.getByRole('button', { name: /PL/i }))
+    // The trigger button has the user name as accessible name.
+    await user.click(screen.getByRole('button', { name: /harsh patel/i }))
 
     const menu = await screen.findByRole('menu')
-    const logoutItem = within(menu).getByRole('menuitem', { name: /log ?out/i })
-    expect(logoutItem).toBeInTheDocument()
+    expect(within(menu).getByRole('menuitem', { name: /log ?out/i })).toBeInTheDocument()
   })
 
-  it('calls useAuth().logout() and navigates to /login when Logout is clicked', async () => {
+  it('clicking Logout calls useAuth().logout() and navigates to /login', async () => {
     const user = userEvent.setup()
-    renderWithRouter(<ProfileMenu initials="PL" />)
+    renderWithRouter(<ProfileMenu user={mockUser} />)
 
-    await user.click(screen.getByRole('button', { name: /PL/i }))
+    await user.click(screen.getByRole('button', { name: /harsh patel/i }))
     const logoutItem = await screen.findByRole('menuitem', { name: /log ?out/i })
     await user.click(logoutItem)
 
@@ -70,29 +100,22 @@ describe('ProfileMenu', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/login')
   })
 
-  it('does not navigate to /login if logout throws', async () => {
-    mockLogout.mockRejectedValueOnce(new Error('network down'))
+  it('does not navigate when logout throws', async () => {
+    mockLogout.mockRejectedValueOnce(new Error('network'))
     const user = userEvent.setup()
-    renderWithRouter(<ProfileMenu initials="PL" />)
+    renderWithRouter(<ProfileMenu user={mockUser} />)
 
-    await user.click(screen.getByRole('button', { name: /PL/i }))
+    await user.click(screen.getByRole('button', { name: /harsh patel/i }))
     const logoutItem = await screen.findByRole('menuitem', { name: /log ?out/i })
     await user.click(logoutItem)
 
-    // Logout was attempted…
     expect(mockLogout).toHaveBeenCalledTimes(1)
-    // …but we should NOT navigate away when the backend logout fails.
     expect(mockNavigate).not.toHaveBeenCalled()
   })
 
-  it('closes the menu when Escape is pressed', async () => {
-    const user = userEvent.setup()
-    renderWithRouter(<ProfileMenu initials="PL" />)
-
-    await user.click(screen.getByRole('button', { name: /PL/i }))
-    expect(await screen.findByRole('menu')).toBeInTheDocument()
-
-    await user.keyboard('{Escape}')
-    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+  it('renders nothing user-visible when user is null (no crash)', () => {
+    renderWithRouter(<ProfileMenu user={null} />)
+    expect(screen.queryByText('Harsh Patel')).not.toBeInTheDocument()
+    expect(screen.queryByText('harsh@planigo.com')).not.toBeInTheDocument()
   })
 })

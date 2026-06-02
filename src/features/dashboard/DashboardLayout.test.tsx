@@ -36,7 +36,21 @@ vi.mock('@/store/useOrgStore', () => ({
 }))
 
 vi.mock('@/store/useAuthStore', () => ({
-  useAuthStore: { getState: () => ({ isLoading: false }) },
+  useAuthStore: {
+    getState: () => ({ isLoading: false }),
+  },
+  // Default selector: a logged-in test user.
+  useAuthStoreSelector: { user: { name: 'Harsh Patel', email: 'harsh@planigo.com', avatarUrl: null } },
+}))
+
+// The store's default selector must return a user. We achieve that with
+// the mock below — vi.mock is hoisted, so we wire the implementation
+// directly into the store factory.
+vi.mock('@/store/useAuthStore', () => ({
+  useAuthStore: (selector?: (s: { user: { name: string; email: string; avatarUrl: string | null } | null }) => unknown) => {
+    const state = { user: { name: 'Harsh Patel', email: 'harsh@planigo.com', avatarUrl: null } }
+    return selector ? selector(state) : state
+  },
 }))
 
 vi.mock('@/hooks/useAuth', () => ({
@@ -87,12 +101,15 @@ describe('DashboardLayout (shadcn Sidebar)', () => {
     expect(sidebars.length).toBe(1)
   })
 
-  it('places the ProfileMenu inside the sidebar', () => {
+  it('places the ProfileMenu inside the sidebar (full-width user row)', () => {
     const { container } = renderLayout()
     const sidebar = container.querySelector('[data-slot="sidebar"]')
     expect(sidebar).not.toBeNull()
-    const profileButton = within(sidebar as HTMLElement).getByRole('button', { name: /ac/i })
+    // The trigger shows the user name (mocked to "Harsh Patel")
+    const profileButton = within(sidebar as HTMLElement).getByRole('button', { name: /harsh patel/i })
     expect(profileButton).toBeInTheDocument()
+    // The full row also shows the email
+    expect(within(sidebar as HTMLElement).getByText('harsh@planigo.com')).toBeInTheDocument()
   })
 
   it('renders the primary nav inside the sidebar', () => {
