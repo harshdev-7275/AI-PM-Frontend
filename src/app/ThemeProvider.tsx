@@ -1,23 +1,37 @@
 import { useEffect } from 'react'
-import { useTheme } from '@/store/useTheme'
+import { useTheme, type Theme } from '@/store/useTheme'
 
-export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const { theme } = useTheme()
+/**
+ * Applies the active theme to <html> by toggling the `dark` class.
+ * Single source of truth for the DOM side effect — the store stays pure.
+ */
+function applyTheme(theme: Theme): void {
+  const html = document.documentElement
+  const isDark =
+    theme === 'dark' ||
+    (theme === 'system' &&
+      window.matchMedia('(prefers-color-scheme: dark)').matches)
 
+  html.classList.toggle('dark', isDark)
+}
+
+interface ThemeProviderProps {
+  children: React.ReactNode
+}
+
+export function ThemeProvider({ children }: ThemeProviderProps) {
+  const theme = useTheme((state) => state.theme)
+
+  // Apply on mount and whenever the theme value changes.
   useEffect(() => {
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
-    const handleChange = () => {
-      if (theme === 'system') {
-        const isDark = mediaQuery.matches
-        const html = document.documentElement
-        if (isDark) {
-          html.classList.add('dark')
-        } else {
-          html.classList.remove('dark')
-        }
-      }
-    }
+    applyTheme(theme)
+  }, [theme])
 
+  // Re-apply when the OS preference flips while theme === 'system'.
+  useEffect(() => {
+    if (theme !== 'system') return
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+    const handleChange = (): void => applyTheme('system')
     mediaQuery.addEventListener('change', handleChange)
     return () => mediaQuery.removeEventListener('change', handleChange)
   }, [theme])
