@@ -91,21 +91,22 @@ describe('DashboardPage layout', () => {
     expect(constrained).toBeNull()
   })
 
-  it('uses a fluid grid that fills the available width (auto-fit / minmax)', () => {
+  it('uses a fluid grid that fills the available width (auto-fit or auto-fill with minmax)', () => {
     const { container } = renderPage()
     const grid = container.querySelector('[data-testid="project-grid"]')
     expect(grid).not.toBeNull()
-    // The grid must be fluid — auto-fit minmax, either via a class
-    // (grid-cols-[repeat(auto-fit,minmax(280px,1fr))]) or via an inline
-    // style.gridTemplateColumns. A plain lg:grid-cols-3 would fail this
-    // because it leaves empty slots when there are fewer items.
+    // The grid must be fluid — minmax columns, either auto-fit or
+    // auto-fill. Combined with max-w-[320px] on each card, this caps
+    // the card width at the production-grade target while still
+    // filling the available horizontal space.
     const styleAttr = grid!.getAttribute('style') ?? ''
     const cls = grid!.className
-    const hasFluidStyle = /repeat\(\s*auto-fit\s*,\s*minmax\(/.test(styleAttr)
-    const hasFluidClass = /grid-cols-\[repeat\(auto-fit/.test(cls) || /\bminmax\(/.test(cls)
-    expect(hasFluidStyle || hasFluidClass).toBe(true)
-    // And it must NOT use a plain fixed column count that would leave
-    // empty slots when there are fewer items than columns.
+    const hasMinMax =
+      /repeat\(\s*auto-fit\s*,\s*minmax\(/.test(styleAttr) ||
+      /repeat\(\s*auto-fill\s*,\s*minmax\(/.test(styleAttr) ||
+      /\bminmax\(/.test(cls)
+    expect(hasMinMax).toBe(true)
+    // And it must NOT use a plain fixed column count.
     expect(cls).not.toMatch(/\blg:grid-cols-\d\b/)
   })
 
@@ -114,5 +115,27 @@ describe('DashboardPage layout', () => {
     const cards = Array.from(container.querySelectorAll('h3'))
       .filter((h) => h.textContent === 'new test' || h.textContent === 'Planiqo P')
     expect(cards.length).toBe(2)
+  })
+
+  it('caps each project card at 320px so cards never stretch on wide viewports', () => {
+    const { container } = renderPage()
+    // Each card slot is wrapped in a div that enforces the max width.
+    // ProjectCard itself also has max-w-[320px] as a defense-in-depth.
+    const cards = container.querySelectorAll('[data-testid="project-card"]')
+    expect(cards.length).toBe(2)
+    for (const card of Array.from(cards)) {
+      expect(card.className).toMatch(/\bmax-w-\[320px\]/)
+    }
+  })
+
+  it('renders the production-grade 4px left-edge status bar on each card', () => {
+    const { container } = renderPage()
+    const cards = container.querySelectorAll('[data-testid="project-card"]')
+    expect(cards.length).toBe(2)
+    for (const card of Array.from(cards)) {
+      // The status bar is a w-1 absolute child with inline background color.
+      const bar = card.querySelector('.absolute.inset-y-0.left-0.w-1')
+      expect(bar).not.toBeNull()
+    }
   })
 })

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useOutletContext, useParams } from 'react-router-dom'
-import { MoreHorizontal, FolderPlus, ArrowRight, LayoutGrid } from 'lucide-react'
+import { MoreHorizontal, FolderPlus, LayoutGrid } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { useOrgStore } from '@/store/useOrgStore'
@@ -28,16 +28,6 @@ function formatMonth(): string {
   return new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
 }
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-}
-
-function hexToRgb(hex: string): string {
-  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex)
-  if (!result) return '99, 102, 241'
-  return `${parseInt(result[1]!, 16)}, ${parseInt(result[2]!, 16)}, ${parseInt(result[3]!, 16)}`
-}
-
 // =============================================================================
 // PROJECT CARD
 // =============================================================================
@@ -55,92 +45,93 @@ interface ProjectCardProps {
 
 function ProjectCard({ project, stats, onOpen, index }: ProjectCardProps) {
   const color = project.color ?? '#6366f1'
-  const rgb = hexToRgb(color)
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.05 }}
-      className="relative flex flex-col rounded-xl p-3.5 cursor-pointer group transition-transform hover:-translate-y-0.5"
-      style={{
-        background: `linear-gradient(135deg, rgba(${rgb}, 0.18) 0%, rgba(${rgb}, 0.08) 100%)`,
-        border: `1px solid rgba(${rgb}, 0.25)`,
-      }}
+      transition={{ delay: index * 0.04, duration: 0.2 }}
       onClick={() => onOpen(project)}
+      data-testid="project-card"
+      className="group relative w-full max-w-[320px] flex cursor-pointer flex-col gap-3 overflow-hidden rounded-xl bg-card p-4 ring-1 ring-border shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          onOpen(project)
+        }
+      }}
     >
-      {/* Top row — date + menu */}
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-[10px] text-muted-foreground">
-          {formatDate(project.createdAt)}
+      {/* Left-edge status bar — 4px vertical accent */}
+      <div
+        aria-hidden
+        className="absolute inset-y-0 left-0 w-1"
+        style={{ backgroundColor: color }}
+      />
+
+      {/* Row 1 — Identity: project icon + name + key */}
+      <div className="flex items-center gap-2">
+        <span
+          className="w-6 h-6 rounded-md flex items-center justify-center text-[10px] font-bold text-white shrink-0"
+          style={{ backgroundColor: color }}
+          aria-hidden
+        >
+          {project.key.slice(0, 2)}
+        </span>
+        <h3 className="flex-1 min-w-0 text-sm font-semibold text-foreground truncate leading-tight">
+          {project.name}
+        </h3>
+        <span className="text-[10px] font-mono text-muted-foreground shrink-0">
+          {project.key}
         </span>
         <button
           type="button"
           onClick={(e) => e.stopPropagation()}
-          className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors"
+          aria-label="Project options"
+          className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground opacity-0 group-hover:opacity-100 hover:bg-muted hover:text-foreground transition-all"
         >
           <MoreHorizontal size={12} />
         </button>
       </div>
 
-      {/* Project name + key */}
-      <div className="flex items-start justify-between gap-2 mb-0.5">
-        <h3 className="text-sm font-semibold text-foreground leading-tight">
-          {project.name}
-        </h3>
-        <span
-          className="text-[9px] font-mono font-semibold px-1 py-0.5 rounded shrink-0 mt-0.5"
-          style={{
-            backgroundColor: `rgba(${rgb}, 0.25)`,
-            color,
-          }}
-        >
-          {project.key}
-        </span>
-      </div>
-
-      {/* Description */}
-      <p className="text-[11px] text-muted-foreground mb-2 line-clamp-1 min-h-[14px]">
-        {project.description ?? 'No description'}
-      </p>
-
-      {/* Stats row — compact single line when total > 0 */}
-      {stats.total > 0 && (
-        <div className="mb-2 flex items-center gap-3 text-[10px] text-muted-foreground">
-          <span><span className="text-foreground font-semibold">{stats.todo}</span> To Do</span>
-          <span><span className="text-foreground font-semibold">{stats.inProgress}</span> In Progress</span>
-          <span><span className="text-foreground font-semibold">{stats.completed}</span> Done</span>
-        </div>
+      {/* Row 2 — Description (omitted if no description) */}
+      {project.description && (
+        <p className="text-xs text-muted-foreground truncate">
+          {project.description}
+        </p>
       )}
 
-      {/* Progress bar with animation */}
-      <div className="mb-1">
-        <div className="flex items-center justify-between mb-1">
-          <span className="text-[10px] text-muted-foreground">Progress</span>
-          <span className="text-[10px] font-medium" style={{ color }}>
-            {stats.completionPercentage}%
-          </span>
+      {/* Row 3 — Stat strip (3 columns, uppercase labels) */}
+      <dl className="grid grid-cols-3 gap-2 pt-1 border-t border-border/60">
+        <div className="flex flex-col gap-0.5">
+          <dt className="text-[10px] uppercase tracking-wide text-muted-foreground">To Do</dt>
+          <dd className="text-sm font-semibold text-foreground tabular-nums">{stats.todo}</dd>
         </div>
-        <div className="h-1 rounded-full bg-white/10">
+        <div className="flex flex-col gap-0.5">
+          <dt className="text-[10px] uppercase tracking-wide text-muted-foreground">Active</dt>
+          <dd className="text-sm font-semibold text-foreground tabular-nums">{stats.inProgress}</dd>
+        </div>
+        <div className="flex flex-col gap-0.5">
+          <dt className="text-[10px] uppercase tracking-wide text-muted-foreground">Done</dt>
+          <dd className="text-sm font-semibold text-foreground tabular-nums">{stats.completed}</dd>
+        </div>
+      </dl>
+
+      {/* Row 4 — Progress bar (linear) */}
+      <div className="flex items-center gap-2">
+        <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
           <motion.div
-            className="h-1 rounded-full"
+            className="h-full rounded-full"
             style={{ backgroundColor: color }}
             initial={{ width: 0 }}
             animate={{ width: `${stats.completionPercentage}%` }}
-            transition={{ duration: 0.8, ease: 'easeOut' }}
+            transition={{ duration: 0.6, ease: 'easeOut' }}
           />
         </div>
-      </div>
-
-      {/* Footer — open board */}
-      <div className="flex items-center justify-end mt-0.5">
-        <div
-          className="flex items-center gap-1 text-[10px] font-medium opacity-0 group-hover:opacity-100 transition-opacity"
-          style={{ color }}
-        >
-          Open board
-          <ArrowRight size={10} />
-        </div>
+        <span className="text-[10px] font-medium text-muted-foreground tabular-nums shrink-0">
+          {stats.completionPercentage}%
+        </span>
       </div>
     </motion.div>
   )
@@ -329,12 +320,15 @@ export default function DashboardPage() {
               negating the parent's px-8 so the line is edge-to-edge. */}
           <div className="mt-4 -mx-8 h-px bg-border" />
 
-          {/* Project grid */}
+          {/* Project grid — auto-fit columns. Each card caps at 320px via
+              max-w-[320px] inside ProjectCard so cards never stretch on
+              wide viewports (the production-grade target from the design
+              synthesis: Linear–Stripe hybrid). */}
           {isLoading ? (
             <div
               data-testid="project-grid"
-              className="grid gap-4"
-              style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))' }}
+              className="grid gap-4 justify-items-start"
+              style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' }}
             >
               {[1, 2, 3, 4, 5, 6].map((i) => (
                 <ProjectCardSkeleton key={i} />
@@ -344,8 +338,8 @@ export default function DashboardPage() {
             <>
               <div
                 data-testid="project-grid"
-                className="grid gap-4"
-                style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))' }}
+                className="grid gap-4 justify-items-start"
+                style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' }}
               >
                 {active.map((project, index) => {
                   const stats = calculateProjectStats(issues, project.id, statuses)
@@ -355,12 +349,8 @@ export default function DashboardPage() {
                       ref={(el) => {
                         cardRefs.current[index] = el
                       }}
-                      tabIndex={0}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') openBoard(project)
-                      }}
-                      className={`outline-none rounded-2xl transition-shadow ${
-                        selectedCardIndex === index ? 'ring-2 ring-brand-primary' : ''
+                      className={`w-full max-w-[320px] outline-none ${
+                        selectedCardIndex === index ? 'ring-2 ring-brand-primary rounded-xl' : ''
                       }`}
                     >
                       <ProjectCard
@@ -381,19 +371,20 @@ export default function DashboardPage() {
                     Archived
                   </p>
                   <div
-                    className="grid gap-4 opacity-50"
-                    style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))' }}
+                    className="grid gap-4 opacity-60 justify-items-start"
+                    style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' }}
                   >
                     {archived.map((project, index) => {
                       const stats = calculateProjectStats(issues, project.id, statuses)
                       return (
-                        <ProjectCard
-                          key={project.id}
-                          project={project}
-                          stats={stats}
-                          onOpen={openBoard}
-                          index={active.length + index}
-                        />
+                        <div key={project.id} className="w-full max-w-[320px]">
+                          <ProjectCard
+                            project={project}
+                            stats={stats}
+                            onOpen={openBoard}
+                            index={active.length + index}
+                          />
+                        </div>
                       )
                     })}
                   </div>
