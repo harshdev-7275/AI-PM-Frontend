@@ -1,31 +1,32 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
-import { useSidebarStore } from '@/store/useSidebarStore'
 
 // ─── Mocks ───────────────────────────────────────────────────────────────────
 
 const mockLoadProjects = vi.fn()
-const mockNavigate = vi.fn()
-const mockUseParams = vi.fn(() => ({ slug: 'acme' }))
+const mockUseParams     = vi.fn(() => ({ slug: 'acme' }))
+
+// Pin useIsMobile to false so shadcn Sidebar renders the desktop variant
+// (a plain <aside>) — the mobile variant renders into a <Sheet> portal.
+vi.mock('@/hooks/use-mobile', () => ({
+  useIsMobile: () => false,
+}))
 
 vi.mock('@/hooks/useProject', () => ({
   useProject: () => ({
-    projects:    [],
+    projects:     [],
     loadProjects: mockLoadProjects,
-    isLoading:   false,
+    isLoading:    false,
   }),
 }))
-
-// loadProjects is awaited and then .finally() is called — return a resolved Promise
-mockLoadProjects.mockResolvedValue(undefined)
 
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom')
   return {
     ...actual,
-    useNavigate: () => mockNavigate,
-    useParams:   () => mockUseParams(),
+    useParams: () => mockUseParams(),
   }
 })
 
@@ -57,10 +58,9 @@ import DashboardLayout from './DashboardLayout'
 beforeEach(() => {
   mockLoadProjects.mockReset()
   mockLoadProjects.mockResolvedValue(undefined)
-  mockNavigate.mockReset()
   mockUseParams.mockReturnValue({ slug: 'acme' })
-  // Reset sidebar to expanded — Zustand store is module-level.
-  useSidebarStore.setState({ isCollapsed: false })
+  // Default cookie state — sidebar expanded.
+  document.cookie = 'sidebar_state=true; path=/'
 })
 
 function renderLayout(initialPath = '/acme/dashboard') {
@@ -75,75 +75,70 @@ function renderLayout(initialPath = '/acme/dashboard') {
   )
 }
 
-describe('DashboardLayout', () => {
+describe('DashboardLayout (shadcn Sidebar)', () => {
   it('renders the children route content', async () => {
     renderLayout()
-    // The layout shows a skeleton until the initial projects load resolves;
-    // use findByTestId to wait for the child to mount.
     expect(await screen.findByTestId('child')).toBeInTheDocument()
   })
 
-  it('renders exactly one sidebar (the icon rail was removed)', () => {
+  it('renders exactly one shadcn Sidebar (data-slot="sidebar")', () => {
     const { container } = renderLayout()
-    // Aside elements are sidebars
-    const sidebars = container.querySelectorAll('aside')
+    const sidebars = container.querySelectorAll('[data-slot="sidebar"]')
     expect(sidebars.length).toBe(1)
   })
 
-  it('renders the ProfileMenu inside the sidebar (not in a separate icon rail)', () => {
+  it('places the ProfileMenu inside the sidebar', () => {
     const { container } = renderLayout()
-    const sidebar = container.querySelector('aside')
+    const sidebar = container.querySelector('[data-slot="sidebar"]')
     expect(sidebar).not.toBeNull()
-    // The profile button has initials (defaulting to org initials "AC")
     const profileButton = within(sidebar as HTMLElement).getByRole('button', { name: /ac/i })
     expect(profileButton).toBeInTheDocument()
   })
 
-  it('still renders the primary nav items inside the single sidebar', () => {
+  it('renders the primary nav inside the sidebar', () => {
     const { container } = renderLayout()
-    const sidebar = container.querySelector('aside')
+    const sidebar = container.querySelector('[data-slot="sidebar"]')
     expect(sidebar).not.toBeNull()
-    const nav = within(sidebar as HTMLElement).getByRole('navigation')
-    // The first nav inside the sidebar lists the primary routes
-    expect(within(nav).getByText('Boards')).toBeInTheDocument()
-    expect(within(nav).getByText('Issues')).toBeInTheDocument()
-    expect(within(nav).getByText('Sprints')).toBeInTheDocument()
-    expect(within(nav).getByText('AI Assistant')).toBeInTheDocument()
-    expect(within(nav).getByText('Analytics')).toBeInTheDocument()
+    expect(within(sidebar as HTMLElement).getByText('Boards')).toBeInTheDocument()
+    expect(within(sidebar as HTMLElement).getByText('Issues')).toBeInTheDocument()
+    expect(within(sidebar as HTMLElement).getByText('Sprints')).toBeInTheDocument()
+    expect(within(sidebar as HTMLElement).getByText('AI Assistant')).toBeInTheDocument()
+    expect(within(sidebar as HTMLElement).getByText('Analytics')).toBeInTheDocument()
   })
 
-  it('renders a collapse/expand toggle button inside the sidebar', () => {
+  it('renders the shadcn SidebarTrigger in the topbar', () => {
     renderLayout()
-    // The button has an accessible name based on its current state.
-    const toggle = screen.getByRole('button', { name: /collapse sidebar/i })
-    expect(toggle).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /toggle sidebar/i })).toBeInTheDocument()
   })
 
-  it('clicking the toggle hides the nav labels (sidebar collapses)', async () => {
-    const user = (await import('@testing-library/user-event')).default.setup()
-    renderLayout()
-    // Initially expanded — labels are present.
+  it('clicking the trigger flips the sidebar to collapsed state', async () => {
+    const user = userEvent.setup()
+    const { container } = renderLayout()
+
+    // Expanded: Boards label is visible.
     expect(screen.getByText('Boards')).toBeVisible()
 
-    await user.click(screen.getByRole('button', { name: /collapse sidebar/i }))
+    await user.click(screen.getByRole('button', { name: /toggle sidebar/i }))
 
-    // After collapse, the primary nav labels are removed from the DOM
-    // (we render the icon-only variant of the row).
-    expect(screen.queryByText('Boards')).not.toBeInTheDocument()
-    // And the toggle's accessible name flips to "expand".
-    expect(screen.getByRole('button', { name: /expand sidebar/i })).toBeInTheDocument()
+    // After collapse, the data-state flips on the sidebar wrapper.
+    const wrapper = container.querySelector('[data-slot="sidebar-wrapper"]')
+    expect(wrapper).not.toBeNull()
+    // Either the sidebar element itself or the wrapper has data-state=collapsed.
+    const collapsedEl = container.querySelector('[data-state="collapsed"]')
+    expect(collapsedEl).not.toBeNull()
   })
 
-  it('clicking the toggle twice restores the labels', async () => {
-    const user = (await import('@testing-library/user-event')).default.setup()
-    renderLayout()
+  it('clicking the trigger again restores the expanded state', async () => {
+    const user = userEvent.setup()
+    const { container } = renderLayout()
 
-    const collapseBtn = screen.getByRole('button', { name: /collapse sidebar/i })
-    await user.click(collapseBtn)
-    expect(screen.queryByText('Boards')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /toggle sidebar/i }))
+    expect(container.querySelector('[data-state="collapsed"]')).not.toBeNull()
 
-    const expandBtn = screen.getByRole('button', { name: /expand sidebar/i })
-    await user.click(expandBtn)
-    expect(screen.getByText('Boards')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /toggle sidebar/i }))
+    // After restore, no collapsed element should be present.
+    expect(container.querySelector('[data-state="collapsed"]')).toBeNull()
+    // Boards label visible again.
+    expect(screen.getByText('Boards')).toBeVisible()
   })
 })
