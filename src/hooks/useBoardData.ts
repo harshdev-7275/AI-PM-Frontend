@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { useParams } from 'react-router-dom'
-import { useIssueStore } from '@/store/useIssueStore'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
+import { useAuthStore } from '@/store/useAuthStore'
 import { useProjectStore } from '@/store/useProjectStore'
-import { useBoardEvents } from '@/hooks/useBoardEvents'
 import {
   getIssueStatuses,
   getIssues,
@@ -10,11 +11,36 @@ import {
   createIssue as createIssueApi,
   updateIssueStatus as updateIssueStatusApi,
 } from '@/services/api'
+import { env } from '@/lib/env'
 import type { CreateIssueInput, Issue, Sprint } from '@/types'
+
+// =============================================================================
+// SSE EVENT TYPES — must match backend issues.sse.ts
+// =============================================================================
+
+type BoardEvent =
+  | { type: 'CONNECTED' }
+  | { type: 'ISSUE_STATUS_UPDATED'; issueId: string; statusId: string; actorId: string; actorName: string }
+  | { type: 'ISSUE_CREATED'; issue: Issue; actorId: string; actorName: string }
+
+// =============================================================================
+// QUERY KEYS
+// =============================================================================
+
+const boardKeys = {
+  issues:   (slug: string, projectId: string) => ['board', slug, projectId, 'issues'] as const,
+  statuses: (slug: string, projectId: string) => ['board', slug, projectId, 'statuses'] as const,
+  sprints:  (slug: string, projectId: string) => ['board', slug, projectId, 'sprints'] as const,
+}
+
+// =============================================================================
+// HOOK
+// =============================================================================
 
 export function useBoardData() {
   const { slug, projectId } = useParams<{ slug: string; projectId: string }>()
-  const [sprints, setSprints] = useState<Sprint[]>([])
+  const queryClient = useQueryClient()
+  const currentUserId = useAuthStore((s) => s.user?.id)
 
   // Ensure currentProject is set even on direct URL load
   const projects          = useProjectStore((s) => s.projects)
@@ -28,68 +54,124 @@ export function useBoardData() {
     if (match) setCurrentProject(match)
   }, [projectId, projects, currentProject?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const {
-    issues,
-    statuses,
-    isLoading,
-    setIssues,
-    setStatuses,
-    setLoading,
-    addIssue,
-    updateIssueStatus,
-  } = useIssueStore()
-
-  // Open SSE connection — receives board events from other users in real time
-  useBoardEvents()
-
+  // SSE connection — invalidates React Query cache instead of mutating Zustand
   useEffect(() => {
     if (!slug || !projectId) return
 
-    const load = async () => {
-      setLoading(true)
+    const accessToken = useAuthStore.getState().accessToken
+    if (!accessToken) return
+
+    const url = `${env.VITE_API_BASE_URL}/orgs/${slug}/projects/${projectId}/issues/events?token=${encodeURIComponent(accessToken)}`
+    const es = new EventSource(url)
+
+    es.onmessage = (e: MessageEvent<string>) => {
+      let event: BoardEvent
       try {
-        const [fetchedStatuses, fetchedIssues, fetchedSprints] = await Promise.all([
-          getIssueStatuses(slug, projectId),
-          getIssues(slug, projectId),
-          getSprints(slug, projectId),
-        ])
-        setStatuses(fetchedStatuses)
-        setIssues(fetchedIssues)
-        setSprints(fetchedSprints)
-      } finally {
-        setLoading(false)
+        event = JSON.parse(e.data) as BoardEvent
+      } catch {
+        return
+      }
+
+      if (event.type === 'CONNECTED') return
+
+      const isMe = event.actorId === currentUserId
+      const actor = isMe ? 'You' : event.actorName
+
+      if (event.type === 'ISSUE_STATUS_UPDATED') {
+        // Invalidate the issues query so React Query refetches fresh data
+        if (!isMe) {
+          void queryClient.invalidateQueries({ queryKey: boardKeys.issues(slug, projectId) })
+        }
+
+        const qk = boardKeys.statuses(slug, projectId)
+        const statuses = queryClient.getQueryData<{ id: string; name: string }[]>(qk)
+        const statusName = statuses?.find((s) => s.id === event.statusId)?.name ?? 'a new column'
+
+        toast(`${actor} moved an issue → ${statusName}`, {
+          duration: 3000,
+          icon:     isMe ? '✓' : '👤',
+        })
+      }
+
+      if (event.type === 'ISSUE_CREATED') {
+        if (!isMe) {
+          void queryClient.invalidateQueries({ queryKey: boardKeys.issues(slug, projectId) })
+        }
+        toast(`${actor} created "${event.issue.title}"`, {
+          duration: 3000,
+          icon:     isMe ? '✓' : '👤',
+        })
       }
     }
 
-    void load()
-  }, [slug, projectId]) // eslint-disable-line react-hooks/exhaustive-deps
+    return () => es.close()
+  }, [slug, projectId, currentUserId, queryClient]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const issuesQuery = useQuery({
+    queryKey: boardKeys.issues(slug ?? '', projectId ?? ''),
+    queryFn:  () => getIssues(slug!, projectId!),
+    enabled:  Boolean(slug) && Boolean(projectId),
+  })
+
+  const statusesQuery = useQuery({
+    queryKey: boardKeys.statuses(slug ?? '', projectId ?? ''),
+    queryFn:  () => getIssueStatuses(slug!, projectId!),
+    enabled:  Boolean(slug) && Boolean(projectId),
+  })
+
+  const sprintsQuery = useQuery({
+    queryKey: boardKeys.sprints(slug ?? '', projectId ?? ''),
+    queryFn:  () => getSprints(slug!, projectId!),
+    enabled:  Boolean(slug) && Boolean(projectId),
+  })
+
+  const dragMutation = useMutation({
+    mutationFn: ({ issueId, statusId }: { issueId: string; statusId: string }) =>
+      updateIssueStatusApi(slug!, projectId!, issueId, statusId),
+    onMutate: async ({ issueId, statusId }) => {
+      // Optimistic update — update the cached issues list immediately
+      await queryClient.cancelQueries({ queryKey: boardKeys.issues(slug ?? '', projectId ?? '') })
+      const previous = queryClient.getQueryData(boardKeys.issues(slug ?? '', projectId ?? ''))
+
+      queryClient.setQueryData(boardKeys.issues(slug ?? '', projectId ?? ''), (old: Issue[] | undefined) =>
+        old?.map((i) => (i.id === issueId ? { ...i, statusId } : i))
+      )
+
+      return { previous }
+    },
+    onError: (_err, _vars, context) => {
+      // Revert on failure
+      if (context?.previous) {
+        queryClient.setQueryData(boardKeys.issues(slug ?? '', projectId ?? ''), context.previous)
+      }
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: boardKeys.issues(slug ?? '', projectId ?? '') })
+    },
+  })
+
+  const createMutation = useMutation({
+    mutationFn: (input: CreateIssueInput) =>
+      createIssueApi(slug!, projectId!, input),
+    onSuccess: (issue) => {
+      void queryClient.invalidateQueries({ queryKey: boardKeys.issues(slug ?? '', projectId ?? '') })
+      return issue
+    },
+  })
 
   const handleDragEnd = async (issueId: string, newStatusId: string): Promise<void> => {
-    const original = issues.find((i) => i.id === issueId)
-    if (!original || original.statusId === newStatusId) return
-
-    // Optimistic update — card moves instantly
-    updateIssueStatus(issueId, newStatusId)
-
-    try {
-      await updateIssueStatusApi(slug!, projectId!, issueId, newStatusId)
-    } catch {
-      // Revert if API call fails
-      updateIssueStatus(issueId, original.statusId)
-    }
+    await dragMutation.mutateAsync({ issueId, statusId })
   }
 
   const handleCreateIssue = async (input: CreateIssueInput): Promise<Issue> => {
-    const issue = await createIssueApi(slug!, projectId!, input)
-    addIssue(issue)
-    return issue
+    return createMutation.mutateAsync(input)
   }
 
   return {
-    issues,
-    statuses,
-    sprints,
-    isLoading,
+    issues:    issuesQuery.data ?? [],
+    statuses:  statusesQuery.data ?? [],
+    sprints:   sprintsQuery.data ?? [],
+    isLoading: issuesQuery.isLoading || statusesQuery.isLoading || sprintsQuery.isLoading,
     handleDragEnd,
     handleCreateIssue,
   }

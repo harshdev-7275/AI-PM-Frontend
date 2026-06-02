@@ -1,8 +1,19 @@
-import { type ReactNode } from 'react'
+import { Component, type ReactNode } from 'react'
 import { BrowserRouter } from 'react-router-dom'
 import { Toaster } from 'sonner'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ThemeProvider } from './ThemeProvider'
 import { useTheme } from '@/store/useTheme'
+import { Button } from '@/components/ui/button'
+
+export const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 2,
+      retry: 1,
+    },
+  },
+})
 
 interface ProvidersProps {
   children: ReactNode
@@ -34,13 +45,42 @@ function ToasterWithTheme() {
   )
 }
 
+interface GlobalErrorBoundaryState {
+  hasError: boolean
+  error: Error | null
+}
+
+class GlobalErrorBoundary extends Component<{ children: ReactNode }, GlobalErrorBoundaryState> {
+  state: GlobalErrorBoundaryState = { hasError: false, error: null }
+
+  static getDerivedStateFromError(error: Error): GlobalErrorBoundaryState {
+    return { hasError: true, error }
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex h-screen flex-col items-center justify-center gap-4">
+          <h1 className="text-2xl font-bold">Something went wrong</h1>
+          <Button onClick={() => window.location.reload()}>Reload page</Button>
+        </div>
+      )
+    }
+    return this.props.children
+  }
+}
+
 export function Providers({ children }: ProvidersProps) {
   return (
-    <ThemeProvider>
-      <BrowserRouter>
-        <ToasterWithTheme />
-        {children}
-      </BrowserRouter>
-    </ThemeProvider>
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider>
+        <BrowserRouter>
+          <GlobalErrorBoundary>
+            <ToasterWithTheme />
+            {children}
+          </GlobalErrorBoundary>
+        </BrowserRouter>
+      </ThemeProvider>
+    </QueryClientProvider>
   )
 }
