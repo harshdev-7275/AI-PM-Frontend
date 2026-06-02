@@ -12,7 +12,7 @@ import {
   updateIssueStatus as updateIssueStatusApi,
 } from '@/services/api'
 import { env } from '@/lib/env'
-import type { CreateIssueInput, Issue, Sprint } from '@/types'
+import type { CreateIssueInput, Issue } from '@/types'
 
 // =============================================================================
 // SSE EVENT TYPES — must match backend issues.sse.ts
@@ -160,7 +160,7 @@ export function useBoardData() {
   })
 
   const handleDragEnd = async (issueId: string, newStatusId: string): Promise<void> => {
-    await dragMutation.mutateAsync({ issueId, statusId })
+    await dragMutation.mutateAsync({ issueId, statusId: newStatusId })
   }
 
   const handleCreateIssue = async (input: CreateIssueInput): Promise<Issue> => {
