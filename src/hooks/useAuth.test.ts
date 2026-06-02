@@ -4,7 +4,7 @@ import { http, HttpResponse } from 'msw'
 import { server } from '../../test/mocks/server'
 import { mockUser, mockAuthResponse } from '../../test/mocks/handlers'
 import { useAuthStore } from '@/store/useAuthStore'
-import { useAuth } from './useAuth'
+import { useAuth, __resetAuthForTests } from './useAuth'
 
 beforeEach(() => {
   useAuthStore.setState({
@@ -13,6 +13,7 @@ beforeEach(() => {
     isLoading:       true,
     isAuthenticated: false,
   })
+  __resetAuthForTests()
 })
 
 // =============================================================================
@@ -44,12 +45,20 @@ describe('login', () => {
 
     const { result } = renderHook(() => useAuth())
 
-    await expect(
-      act(async () => {
+    // NOTE: do NOT use `await expect(act(...)).rejects.toThrow()` here.
+    // That pattern corrupts React 19's act bookkeeping in
+    // @testing-library/react v16 and cascades null result.current into the
+    // following tests. Use try/catch inside act instead.
+    let caught: unknown = null
+    await act(async () => {
+      try {
         await result.current.login('bad@example.com', 'wrong')
-      })
-    ).rejects.toThrow()
+      } catch (e) {
+        caught = e
+      }
+    })
 
+    expect(caught).toBeDefined()
     expect(result.current.isAuthenticated).toBe(false)
     expect(result.current.user).toBeNull()
   })
@@ -93,12 +102,16 @@ describe('register', () => {
 
     const { result } = renderHook(() => useAuth())
 
-    await expect(
-      act(async () => {
+    let caught: unknown = null
+    await act(async () => {
+      try {
         await result.current.register('Test User', 'taken@example.com', 'password123')
-      })
-    ).rejects.toThrow()
+      } catch (e) {
+        caught = e
+      }
+    })
 
+    expect(caught).toBeDefined()
     expect(result.current.isAuthenticated).toBe(false)
   })
 })
