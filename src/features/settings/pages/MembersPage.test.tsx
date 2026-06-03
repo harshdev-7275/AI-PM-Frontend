@@ -1,5 +1,5 @@
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { render, screen, act } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { http, HttpResponse } from 'msw'
@@ -188,7 +188,7 @@ describe('invite section', () => {
     expect(screen.getByRole('button', { name: /sending/i })).toBeDisabled()
   })
 
-  it('shows green success banner with the invited email on success', async () => {
+  it('shows the shareable invite link on success', async () => {
     const user = userEvent.setup()
     renderMembersPage()
     await screen.findByText(ownerMember.name)
@@ -196,9 +196,9 @@ describe('invite section', () => {
     await user.type(screen.getByPlaceholderText(/email address/i), mockInvitation.email)
     await user.click(screen.getByRole('button', { name: /send invite/i }))
 
-    expect(
-      await screen.findByText(new RegExp(`invite sent to ${mockInvitation.email}`, 'i'))
-    ).toBeInTheDocument()
+    await screen.findByText(/invite created for/i)
+    const link = screen.getByLabelText(/invite link/i)
+    expect((link as HTMLInputElement).value).toContain(`/invite/${mockInvitation.token}`)
   })
 
   it('clears the email input after a successful invite', async () => {
@@ -210,31 +210,25 @@ describe('invite section', () => {
     await user.type(input, mockInvitation.email)
     await user.click(screen.getByRole('button', { name: /send invite/i }))
 
-    await screen.findByText(/invite sent to/i)
+    await screen.findByText(/invite created for/i)
     expect(input).toHaveValue('')
   })
 
-  it('auto-dismisses the success banner after 3 seconds', async () => {
-    // Spy on setTimeout without replacing it — real timers keep working for
-    // React internals and waitFor polling; we just capture the dismiss callback.
-    const timeoutSpy = vi.spyOn(globalThis, 'setTimeout')
-
+  it('copies the invite link to the clipboard when "Copy link" is clicked', async () => {
     const user = userEvent.setup()
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
+
     renderMembersPage()
     await screen.findByText(ownerMember.name)
 
     await user.type(screen.getByPlaceholderText(/email address/i), mockInvitation.email)
     await user.click(screen.getByRole('button', { name: /send invite/i }))
+    await screen.findByText(/invite created for/i)
 
-    await screen.findByText(new RegExp(`invite sent to ${mockInvitation.email}`, 'i'))
+    await user.click(screen.getByRole('button', { name: /copy link/i }))
 
-    // Find the 3 000 ms dismiss call and fire it synchronously
-    const dismissCall = timeoutSpy.mock.calls.find(([, ms]) => ms === 3000)
-    act(() => { (dismissCall?.[0] as () => void)() })
-
-    expect(screen.queryByText(/invite sent to/i)).not.toBeInTheDocument()
-
-    timeoutSpy.mockRestore()
+    expect(writeText).toHaveBeenCalledWith(expect.stringContaining(`/invite/${mockInvitation.token}`))
   })
 
   it('shows the error from the hook below the inputs on failure', async () => {

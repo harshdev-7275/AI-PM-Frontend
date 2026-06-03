@@ -5,6 +5,7 @@ import {
   inviteMember,
   updateMemberRole,
   removeMember,
+  transferOwnership,
 } from '@/services/api'
 import type { OrgMember, OrgMemberRole, InviteRole, Invitation } from '@/types'
 
@@ -90,6 +91,20 @@ export function useMembers(slug: string) {
     }))
   }
 
+  // Promotes the target to owner and demotes the current owner to admin — mirrors
+  // the backend's atomic swap so the list reflects the new roles without a refetch.
+  const handleTransferOwnership = async (orgSlug: string, newOwnerUserId: string): Promise<void> => {
+    await transferOwnership(orgSlug, newOwnerUserId)
+    setState((s) => ({
+      ...s,
+      members: s.members.map((m) => {
+        if (m.userId === newOwnerUserId) return { ...m, role: 'owner' }
+        if (m.role === 'owner')          return { ...m, role: 'admin' }
+        return m
+      }),
+    }))
+  }
+
   return {
     members:            state.members,
     isLoading:          state.isLoading,
@@ -99,5 +114,6 @@ export function useMembers(slug: string) {
     handleInvite,
     handleUpdateRole,
     handleRemoveMember,
+    handleTransferOwnership,
   }
 }
