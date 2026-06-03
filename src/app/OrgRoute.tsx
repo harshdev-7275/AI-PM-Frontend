@@ -10,28 +10,33 @@ interface OrgRouteProps {
 export function OrgRoute({ children }: OrgRouteProps) {
   const { slug } = useParams<{ slug: string }>()
   const { currentOrg, orgs, isLoading, loadUserOrgs, switchOrg } = useOrg()
-  const [attempted, setAttempted] = useState(false)
 
-  // When the slug in the URL changes, ensure the matching org is loaded.
-  // Only depends on slug — intentionally runs once per slug change.
+  // The slug we've finished a load attempt for. Set only inside the async
+  // callback so we never call setState synchronously within an effect body.
+  const [loadedForSlug, setLoadedForSlug] = useState<string | null>(null)
+
+  // Derived from render state — no effect needed.
+  const orgReady  = currentOrg?.slug === slug
+  const attempted = orgReady || loadedForSlug === slug
+
+  // Load the user's orgs whenever we don't already have the one named in the URL.
   useEffect(() => {
-    setAttempted(false)
+    if (orgReady) return
 
-    if (currentOrg?.slug === slug) {
-      setAttempted(true)
-      return
-    }
+    let cancelled = false
+    void loadUserOrgs().finally(() => {
+      if (!cancelled) setLoadedForSlug(slug ?? null)
+    })
+    return () => { cancelled = true }
+  }, [slug, orgReady]) // eslint-disable-line react-hooks/exhaustive-deps
 
-    void loadUserOrgs().finally(() => setAttempted(true))
-  }, [slug]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // After orgs load, sync currentOrg to whichever org matches the URL slug.
-  // Handles the case where the user navigates to a different org's URL directly.
+  // Once orgs are loaded, point currentOrg at whichever one matches the URL slug
+  // (loadUserOrgs defaults currentOrg to the first org).
   useEffect(() => {
-    if (!attempted || currentOrg?.slug === slug) return
+    if (orgReady) return
     const match = orgs.find((o) => o.slug === slug)
     if (match) switchOrg(match)
-  }, [attempted, orgs, slug]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [orgs, slug, orgReady]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (isLoading || !attempted) {
     return (
