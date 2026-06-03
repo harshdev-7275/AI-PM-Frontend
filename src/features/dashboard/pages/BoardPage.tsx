@@ -279,6 +279,13 @@ export default function BoardPage() {
               />
             )}
             <Button
+              variant="outline"
+              onClick={() => navigate(`/${slug}/projects/${projectId}/members`)}
+              className="h-8 px-3 text-sm"
+            >
+              Members
+            </Button>
+            <Button
               onClick={() => openModal(statuses[0]?.id ?? '')}
               disabled={statuses.length === 0}
               className="h-8 px-3 text-sm bg-brand-primary hover:bg-brand-primary-hover text-white border-0"
