@@ -55,24 +55,27 @@ describe('PublicRoute', () => {
     expect(screen.queryByText('login form')).not.toBeInTheDocument()
   })
 
-  it('redirects to /login when authenticated but no org is loaded yet', () => {
+  it('loads the user orgs and redirects to the dashboard when authenticated but no org is loaded yet', async () => {
     useAuthStore.setState({
       isLoading:       false,
       isAuthenticated: true,
       user:            { id: '1', name: 'Test', email: 'test@example.com', avatarUrl: null, jobTitle: null, timezone: 'UTC', createdAt: '2026-01-01T00:00:00.000Z' },
-      accessToken:     'mock-token',
+      accessToken:     'mock-access-token',
     })
-    // currentOrg remains null
+    // currentOrg remains null — simulates a fresh reload that lands on /login
+    // before any org has been loaded into the in-memory store.
 
     render(
       <MemoryRouter initialEntries={['/login']}>
         <Routes>
-          <Route path="/login" element={<PublicRoute><div>login form</div></PublicRoute>} />
-          <Route path="*"      element={<div>other page</div>} />
+          <Route path="/login"              element={<PublicRoute><div>login form</div></PublicRoute>} />
+          <Route path="/test-org/dashboard" element={<div>dashboard page</div>} />
         </Routes>
       </MemoryRouter>
     )
 
+    // It must resolve the org and route the user in — never trap them on /login.
+    expect(await screen.findByText('dashboard page')).toBeInTheDocument()
     expect(screen.queryByText('login form')).not.toBeInTheDocument()
   })
 

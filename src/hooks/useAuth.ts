@@ -1,9 +1,12 @@
 import { useAuthStore } from '@/store/useAuthStore'
 import { loginUser, registerUser, logoutUser, refreshToken, getMe } from '@/services/api'
 
-// Module-level guard so a single failed refresh per page load doesn't fire
-// three times (AppInitializer + axios interceptor on 401 + manual call).
-let hasTriedRefresh = false
+// Module-level cache of the session-restore promise. A single page load should
+// trigger exactly one refresh, but React StrictMode invokes the mount effect
+// twice. Every caller awaits this same promise instead of starting a second
+// refresh — critically, a repeat call must never clear an in-flight restore,
+// which would bounce the user to /login mid-refresh.
+let initializePromise: Promise<void> | null = null
 
 // Hard cap on how long initialize() will wait for the backend. Even if the
 // network hangs, isLoading flips to false so the UI can render.
@@ -42,42 +45,43 @@ export function useAuth() {
     clearAuth()
   }
 
-  const initialize = async (): Promise<void> => {
-    // Skip the refresh round-trip if we already attempted it this page load.
-    if (hasTriedRefresh) {
-      // Still ensure isLoading is false on subsequent calls.
-      if (useAuthStore.getState().isLoading) clearAuth()
-      return
-    }
-    hasTriedRefresh = true
+  const initialize = (): Promise<void> => {
+    // De-duplicate concurrent/repeat calls — share the one in-flight restore.
+    // A later caller awaits the same promise; it never clears a session that
+    // the first caller is still restoring.
+    if (initializePromise) return initializePromise
 
-    try {
-      const { accessToken } = await withTimeout(
-        refreshToken(),
-        INITIALIZE_TIMEOUT_MS,
-        'Session refresh',
-      )
-      const user = await withTimeout(
-        getMe(accessToken),
-        INITIALIZE_TIMEOUT_MS,
-        'Session fetch user',
-      )
-      setAuth(user, accessToken)
-    } catch {
-      // Expected on first visit, after session expiry, or when the backend
-      // is unreachable — treat as logged out so the UI can render.
-      clearAuth()
-    } finally {
-      // Defensive: if some path leaves isLoading=true (e.g. a code change
-      // that forgets to call clearAuth), flip it now.
-      if (useAuthStore.getState().isLoading) clearAuth()
-    }
+    initializePromise = (async () => {
+      try {
+        const { accessToken } = await withTimeout(
+          refreshToken(),
+          INITIALIZE_TIMEOUT_MS,
+          'Session refresh',
+        )
+        const user = await withTimeout(
+          getMe(accessToken),
+          INITIALIZE_TIMEOUT_MS,
+          'Session fetch user',
+        )
+        setAuth(user, accessToken)
+      } catch {
+        // Expected on first visit, after session expiry, or when the backend
+        // is unreachable — treat as logged out so the UI can render.
+        clearAuth()
+      } finally {
+        // Defensive: if some path leaves isLoading=true (e.g. a code change
+        // that forgets to call clearAuth), flip it now.
+        if (useAuthStore.getState().isLoading) clearAuth()
+      }
+    })()
+
+    return initializePromise
   }
 
   return { login, register, logout, initialize, user, isLoading, isAuthenticated }
 }
 
-// Test helper — resets the module-level refresh guard between tests.
+// Test helper — clears the cached restore promise between tests.
 export function __resetAuthForTests(): void {
-  hasTriedRefresh = false
+  initializePromise = null
 }

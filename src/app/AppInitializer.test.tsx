@@ -3,6 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { server } from '../../test/mocks/server'
 import { useAuthStore } from '@/store/useAuthStore'
+import { __resetAuthForTests } from '@/hooks/useAuth'
 import { AppInitializer } from './AppInitializer'
 
 beforeEach(() => {
@@ -12,6 +13,9 @@ beforeEach(() => {
     isLoading:       true,
     isAuthenticated: false,
   })
+  // initialize() caches its restore promise at module scope; clear it so each
+  // test triggers a fresh refresh against its own MSW handler.
+  __resetAuthForTests()
 })
 
 describe('AppInitializer', () => {
