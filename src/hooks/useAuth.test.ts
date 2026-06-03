@@ -166,6 +166,35 @@ describe('initialize', () => {
     expect(result.current.isLoading).toBe(false)
   })
 
+  it('does not clear a still-loading session when called twice (StrictMode double-invoke)', async () => {
+    // Return the token the default /auth/me handler accepts so restore succeeds.
+    server.use(
+      http.post('http://localhost:4000/auth/refresh', () =>
+        HttpResponse.json({ accessToken: 'mock-access-token', expiresIn: 900 })
+      )
+    )
+
+    const { result } = renderHook(() => useAuth())
+
+    await act(async () => {
+      // React StrictMode invokes the mount effect twice. The second call lands
+      // while the first refresh is still in flight — it must NOT clear the
+      // session, which would bounce the user to /login mid-restore.
+      const first = result.current.initialize()
+      result.current.initialize()
+
+      // Refresh has not resolved yet: the session must still be loading,
+      // not cleared to a logged-out state.
+      expect(useAuthStore.getState().isLoading).toBe(true)
+
+      await first
+    })
+
+    expect(result.current.isAuthenticated).toBe(true)
+    expect(result.current.user?.email).toBe(mockUser.email)
+    expect(result.current.isLoading).toBe(false)
+  })
+
   it('calls clearAuth and does not throw when refresh token is missing or expired', async () => {
     server.use(
       http.post('http://localhost:4000/auth/refresh', () =>
