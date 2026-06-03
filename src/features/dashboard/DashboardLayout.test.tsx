@@ -123,17 +123,41 @@ describe('DashboardLayout (shadcn Sidebar)', () => {
     expect(within(sidebar as HTMLElement).getByText('Analytics')).toBeInTheDocument()
   })
 
+  it('groups the primary nav under a "Workspace" section label', () => {
+    const { container } = renderLayout()
+    const sidebar = container.querySelector('[data-slot="sidebar"]')
+    expect(sidebar).not.toBeNull()
+    expect(within(sidebar as HTMLElement).getByText('Workspace')).toBeInTheDocument()
+  })
+
+  it('marks the nav item matching the current route as active', () => {
+    const { container } = renderLayout('/acme/dashboard')
+    const sidebar = container.querySelector('[data-slot="sidebar"]')
+    const boards = within(sidebar as HTMLElement).getByRole('link', { name: 'Boards' })
+    const issues = within(sidebar as HTMLElement).getByRole('link', { name: 'Issues' })
+    expect(boards).toHaveAttribute('data-active', 'true')
+    expect(issues).toHaveAttribute('data-active', 'false')
+  })
+
   it('renders the shadcn SidebarTrigger in the topbar', () => {
     renderLayout()
     expect(screen.getByRole('button', { name: /toggle sidebar/i })).toBeInTheDocument()
+  })
+
+  it('shows a breadcrumb for the current section in the topbar', () => {
+    renderLayout('/acme/dashboard')
+    const nav = screen.getByRole('navigation', { name: /breadcrumb/i })
+    expect(within(nav).getByText('Acme')).toBeInTheDocument()
+    expect(within(nav).getByText('Boards')).toBeInTheDocument()
   })
 
   it('clicking the trigger flips the sidebar to collapsed state', async () => {
     const user = userEvent.setup()
     const { container } = renderLayout()
 
-    // Expanded: Boards label is visible.
-    expect(screen.getByText('Boards')).toBeVisible()
+    // Expanded: the Boards nav label is visible in the sidebar.
+    const sidebar = container.querySelector('[data-slot="sidebar"]') as HTMLElement
+    expect(within(sidebar).getByText('Boards')).toBeVisible()
 
     await user.click(screen.getByRole('button', { name: /toggle sidebar/i }))
 
@@ -155,7 +179,8 @@ describe('DashboardLayout (shadcn Sidebar)', () => {
     await user.click(screen.getByRole('button', { name: /toggle sidebar/i }))
     // After restore, no collapsed element should be present.
     expect(container.querySelector('[data-state="collapsed"]')).toBeNull()
-    // Boards label visible again.
-    expect(screen.getByText('Boards')).toBeVisible()
+    // Boards nav label visible again in the sidebar.
+    const sidebar = container.querySelector('[data-slot="sidebar"]') as HTMLElement
+    expect(within(sidebar).getByText('Boards')).toBeVisible()
   })
 })
