@@ -7,7 +7,7 @@ import type {
   AuthResponse, User, Org, Project, Issue, IssueStatus, WorkflowStatus,
   CreateIssueInput, UpdateIssueInput,
   IssueDetail, Comment, IssueHistoryEntry,
-  OrgMember, OrgMemberRole, InviteRole, Invitation, ProjectMember, Sprint,
+  OrgMember, OrgMemberRole, InviteRole, Invitation, ProjectMember, ProjectRole, Sprint,
 } from '@/types'
 
 // Thrown by deleteStatus when the backend returns 409 STATUS_HAS_ISSUES.
@@ -87,7 +87,8 @@ const OrgSchema = z.object({
   createdAt: z.string(),
 })
 
-const OrgMemberRoleSchema = z.enum(['owner', 'admin', 'member'])
+const OrgMemberRoleSchema = z.enum(['owner', 'admin', 'member', 'viewer'])
+const ProjectRoleSchema   = z.enum(['lead', 'member', 'viewer'])
 
 export const OrgMemberSchema = z.object({
   id:        z.string().uuid(),
@@ -379,6 +380,13 @@ export const removeMember = async (
   await api.delete(`/orgs/${slug}/members/${userId}`)
 }
 
+export const transferOwnership = async (
+  slug:   string,
+  userId: string,
+): Promise<void> => {
+  await api.post(`/orgs/${slug}/transfer-ownership`, { userId })
+}
+
 // The request interceptor attaches the Bearer token automatically when the user
 // is logged in. If no token is in the store, the request goes unauthenticated
 // and the component is responsible for handling any resulting 401.
@@ -545,7 +553,7 @@ const ProjectMemberSchema = z.object({
   name:      z.string(),
   email:     z.string().email(),
   avatarUrl: z.string().nullable(),
-  role:      z.string(),
+  role:      ProjectRoleSchema,
   addedAt:   z.string(),
 })
 
@@ -555,6 +563,33 @@ export const getProjectMembers = async (
 ): Promise<ProjectMember[]> => {
   const res = await api.get(`/orgs/${slug}/projects/${projectId}/members`)
   return z.array(ProjectMemberSchema).parse(res.data)
+}
+
+export const addProjectMember = async (
+  slug:      string,
+  projectId: string,
+  userId:    string,
+  role:      ProjectRole,
+): Promise<ProjectMember> => {
+  const res = await api.post(`/orgs/${slug}/projects/${projectId}/members`, { userId, role })
+  return ProjectMemberSchema.parse(res.data)
+}
+
+export const updateProjectMemberRole = async (
+  slug:      string,
+  projectId: string,
+  userId:    string,
+  role:      ProjectRole,
+): Promise<void> => {
+  await api.patch(`/orgs/${slug}/projects/${projectId}/members/${userId}`, { role })
+}
+
+export const removeProjectMember = async (
+  slug:      string,
+  projectId: string,
+  userId:    string,
+): Promise<void> => {
+  await api.delete(`/orgs/${slug}/projects/${projectId}/members/${userId}`)
 }
 
 // =============================================================================

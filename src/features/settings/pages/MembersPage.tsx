@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
-import type { OrgMember, InviteRole } from '@/types'
+import type { OrgMember, InviteRole, Invitation } from '@/types'
 
 // =============================================================================
 // SUB-COMPONENTS
@@ -38,9 +38,10 @@ function RoleBadge({ role }: RoleBadgeProps) {
     owner:  'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300',
     admin:  'bg-blue-100   text-blue-700   dark:bg-blue-900/30   dark:text-blue-300',
     member: 'bg-muted      text-muted-foreground',
+    viewer: 'bg-zinc-100   text-zinc-600   dark:bg-zinc-800/40   dark:text-zinc-300',
   }
   const labels: Record<OrgMember['role'], string> = {
-    owner: 'Owner', admin: 'Admin', member: 'Member',
+    owner: 'Owner', admin: 'Admin', member: 'Member', viewer: 'Viewer',
   }
   return (
     <span className={cn('inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium', styles[role])}>
@@ -54,13 +55,15 @@ interface MemberRowProps {
   isSelf:        boolean
   canRemove:     boolean
   canChangeRole: boolean
+  canTransfer:   boolean
   slug:          string
   onUpdateRole:  (slug: string, userId: string, role: InviteRole) => Promise<void>
   onRemove:      (slug: string, userId: string) => Promise<void>
+  onTransfer:    (slug: string, userId: string) => Promise<void>
 }
 
 function MemberRow({
-  member, isSelf, canRemove, canChangeRole, slug, onUpdateRole, onRemove,
+  member, isSelf, canRemove, canChangeRole, canTransfer, slug, onUpdateRole, onRemove, onTransfer,
 }: MemberRowProps) {
   const initials = member.name.slice(0, 2).toUpperCase()
 
@@ -92,10 +95,27 @@ function MemberRow({
           <SelectContent>
             <SelectItem value="member">Member</SelectItem>
             <SelectItem value="admin">Admin</SelectItem>
+            <SelectItem value="viewer">Viewer</SelectItem>
           </SelectContent>
         </Select>
       ) : (
         <RoleBadge role={member.role} />
+      )}
+
+      {/* Transfer ownership */}
+      {canTransfer && (
+        <button
+          type="button"
+          aria-label={`Make ${member.name} the owner`}
+          onClick={() => {
+            if (window.confirm(`Transfer ownership to ${member.name}? You will become an admin.`)) {
+              void onTransfer(slug, member.userId)
+            }
+          }}
+          className="text-xs text-muted-foreground hover:text-foreground hover:underline ml-2 shrink-0"
+        >
+          Make owner
+        </button>
       )}
 
       {/* Remove button */}
@@ -154,6 +174,7 @@ function InviteSection({ isInviting, hookError, onInvite }: InviteSectionProps) 
               <SelectContent>
                 <SelectItem value="member">Member</SelectItem>
                 <SelectItem value="admin">Admin</SelectItem>
+                <SelectItem value="viewer">Viewer</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -186,10 +207,20 @@ export default function MembersPage() {
 
   const {
     members, isLoading, isInviting, error,
-    loadMembers, handleInvite, handleUpdateRole, handleRemoveMember,
+    loadMembers, handleInvite, handleUpdateRole, handleRemoveMember, handleTransferOwnership,
   } = useMembers(slug ?? '')
 
-  const [successEmail, setSuccessEmail] = useState<string | null>(null)
+  const [successInvite, setSuccessInvite] = useState<Invitation | null>(null)
+  const [copied, setCopied] = useState(false)
+
+  const inviteLink = successInvite ? `${window.location.origin}/invite/${successInvite.token}` : null
+
+  async function copyInviteLink() {
+    if (!inviteLink) return
+    await navigator.clipboard.writeText(inviteLink)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
 
   useEffect(() => {
     if (slug) void loadMembers(slug)
@@ -203,8 +234,8 @@ export default function MembersPage() {
   async function onInvite(email: string, role: InviteRole) {
     const invitation = await handleInvite(email, role)
     if (invitation) {
-      setSuccessEmail(email)
-      setTimeout(() => setSuccessEmail(null), 3000)
+      setSuccessInvite(invitation)
+      setCopied(false)
     }
   }
 
@@ -219,10 +250,18 @@ export default function MembersPage() {
         />
       )}
 
-      {/* Success banner */}
-      {successEmail && (
-        <div className="mb-6 rounded-md bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-800 dark:bg-green-900/20 dark:border-green-800 dark:text-green-300">
-          Invite sent to {successEmail}
+      {/* Invite link — share this with the invited person */}
+      {successInvite && inviteLink && (
+        <div className="mb-6 rounded-md border border-border bg-card px-4 py-3">
+          <p className="text-sm text-foreground mb-2">
+            Invite created for <span className="font-medium">{successInvite.email}</span>. Share this link:
+          </p>
+          <div className="flex items-center gap-2">
+            <Input readOnly value={inviteLink} aria-label="Invite link" className="h-9 flex-1 text-xs" />
+            <Button size="sm" variant="outline" className="h-9 shrink-0" onClick={() => void copyInviteLink()}>
+              {copied ? 'Copied' : 'Copy link'}
+            </Button>
+          </div>
         </div>
       )}
 
@@ -255,8 +294,10 @@ export default function MembersPage() {
                   slug={slug ?? ''}
                   canChangeRole={isOwner && !isSelf && !isOtherOwner}
                   canRemove={canManage && !isSelf}
+                  canTransfer={isOwner && !isSelf && !isOtherOwner}
                   onUpdateRole={handleUpdateRole}
                   onRemove={handleRemoveMember}
+                  onTransfer={handleTransferOwnership}
                 />
               )
             })
