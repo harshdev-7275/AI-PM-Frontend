@@ -145,8 +145,9 @@ export interface Comment {
   updatedAt: string
 }
 
-export type OrgMemberRole = 'owner' | 'admin' | 'member'
+export type OrgMemberRole = 'owner' | 'admin' | 'member' | 'viewer'
 export type InviteRole    = Exclude<OrgMemberRole, 'owner'>
+export type ProjectRole   = 'lead' | 'member' | 'viewer'
 
 export interface OrgMember {
   id:        string
@@ -170,7 +171,7 @@ export interface ProjectMember {
   name:      string
   email:     string
   avatarUrl: string | null
-  role:      string
+  role:      ProjectRole
   addedAt:   string
 }
 
