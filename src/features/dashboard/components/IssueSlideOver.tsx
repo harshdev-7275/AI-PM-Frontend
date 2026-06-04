@@ -5,6 +5,7 @@ import { useParams } from 'react-router-dom'
 import { useIssueDetail } from '@/hooks/useIssueDetail'
 import { useIssueStore } from '@/store/useIssueStore'
 import { useProjectStore } from '@/store/useProjectStore'
+import { Badge } from '@/components/ui/badge'
 import { ActivityFeed } from './ActivityFeed'
 import type { IssuePriority, IssueType, ProjectMember } from '@/types'
 
@@ -455,9 +456,9 @@ export function IssueSlideOver({ issueId, isOpen, onClose }: IssueSlideOverProps
                   {currentProject?.key ?? '…'}-{issue?.number ?? '…'}
                 </span>
                 {issue && (
-                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                  <Badge variant="secondary" className="h-4 px-1.5 text-[10px] rounded text-muted-foreground">
                     {TYPE_LABEL[issue.type as IssueType] ?? issue.type}
-                  </span>
+                  </Badge>
                 )}
               </div>
 
@@ -510,9 +511,9 @@ export function IssueSlideOver({ issueId, isOpen, onClose }: IssueSlideOverProps
                     <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                       Activity
                       {(comments.length + history.length) > 0 && (
-                        <span className="ml-1.5 text-[10px] bg-muted px-1.5 py-0.5 rounded-full">
+                        <Badge variant="secondary" className="ml-1.5 h-4 px-1.5 text-[10px]">
                           {comments.length + history.length}
-                        </span>
+                        </Badge>
                       )}
                     </span>
 

@@ -6,6 +6,7 @@ import { useBacklog } from '@/hooks/useBacklog'
 import { useProjectStore } from '@/store/useProjectStore'
 import { useProject } from '@/hooks/useProject'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { IssueSlideOver } from '../components/IssueSlideOver'
 import { SprintPanel } from '../components/SprintPanel'
 import { BacklogIssueRow } from '../components/BacklogIssueRow'
@@ -67,9 +68,9 @@ export default function BacklogPage() {
             <span className="text-base font-semibold text-foreground">
               {currentProject?.name ?? '—'}
             </span>
-            <span className="text-xs font-mono text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+            <Badge variant="secondary" className="h-4 px-1.5 text-xs font-mono text-muted-foreground">
               {currentProject?.key ?? ''}
-            </span>
+            </Badge>
             <span className="text-xs text-muted-foreground">· Backlog</span>
           </div>
           <Button

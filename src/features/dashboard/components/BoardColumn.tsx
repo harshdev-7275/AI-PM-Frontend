@@ -8,6 +8,7 @@ import {
   ContextMenuShortcut,
   ContextMenuTrigger,
 } from '@/components/ui/context-menu'
+import { Badge } from '@/components/ui/badge'
 import { IssueCard } from './IssueCard'
 import type { Issue, IssueStatus } from '@/types'
 
@@ -49,9 +50,9 @@ export function BoardColumn({
             <span className="text-sm font-semibold text-foreground truncate">
               {status.name}
             </span>
-            <span className="text-[11px] font-medium text-muted-foreground bg-muted/80 px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
+            <Badge variant="secondary" className="h-4 px-1.5 text-[11px] min-w-[20px] justify-center bg-muted/80 text-muted-foreground">
               {issues.length}
-            </span>
+            </Badge>
           </div>
 
           {/* Drop zone + card list */}

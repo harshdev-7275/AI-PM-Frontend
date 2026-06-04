@@ -4,6 +4,7 @@ import { useProjectStore } from '@/store/useProjectStore'
 import { useChat } from '@/hooks/useChat'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
+import { Badge } from '@/components/ui/badge'
 import {
   Select,
   SelectContent,
@@ -212,9 +213,9 @@ export default function AIAssistantPage() {
                           {formatTime(msg.timestamp)}
                         </span>
                         {msg.intent && (
-                          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border">
+                          <Badge variant="outline" className="h-4 px-1.5 text-[10px] font-mono text-muted-foreground">
                             {msg.intent}
-                          </span>
+                          </Badge>
                         )}
                       </div>
                     </div>

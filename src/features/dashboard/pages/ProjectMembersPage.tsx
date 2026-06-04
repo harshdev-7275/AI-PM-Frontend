@@ -9,27 +9,12 @@ import { Button } from '@/components/ui/button'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
-import { cn } from '@/lib/utils'
+import { RoleBadge } from '@/components/primitives/RoleBadge'
 import type { OrgMember, ProjectMember, ProjectRole } from '@/types'
 
 // =============================================================================
 // SUB-COMPONENTS
 // =============================================================================
-
-const ROLE_LABEL: Record<ProjectRole, string> = { lead: 'Lead', member: 'Member', viewer: 'Viewer' }
-
-function RoleBadge({ role }: { role: ProjectRole }) {
-  const styles: Record<ProjectRole, string> = {
-    lead:   'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300',
-    member: 'bg-muted text-muted-foreground',
-    viewer: 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800/40 dark:text-zinc-300',
-  }
-  return (
-    <span className={cn('inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium', styles[role])}>
-      {ROLE_LABEL[role]}
-    </span>
-  )
-}
 
 interface AddMemberSectionProps {
   candidates: OrgMember[]

@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { cn } from '@/lib/utils'
+import { RoleBadge } from '@/components/primitives/RoleBadge'
 import type { OrgMember, InviteRole, Invitation } from '@/types'
 
 // =============================================================================
@@ -28,25 +28,6 @@ function SkeletonRow() {
       </div>
       <div className="h-5 w-14 rounded-full bg-muted" />
     </div>
-  )
-}
-
-interface RoleBadgeProps { role: OrgMember['role'] }
-
-function RoleBadge({ role }: RoleBadgeProps) {
-  const styles: Record<OrgMember['role'], string> = {
-    owner:  'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300',
-    admin:  'bg-blue-100   text-blue-700   dark:bg-blue-900/30   dark:text-blue-300',
-    member: 'bg-muted      text-muted-foreground',
-    viewer: 'bg-zinc-100   text-zinc-600   dark:bg-zinc-800/40   dark:text-zinc-300',
-  }
-  const labels: Record<OrgMember['role'], string> = {
-    owner: 'Owner', admin: 'Admin', member: 'Member', viewer: 'Viewer',
-  }
-  return (
-    <span className={cn('inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium', styles[role])}>
-      {labels[role]}
-    </span>
   )
 }
 

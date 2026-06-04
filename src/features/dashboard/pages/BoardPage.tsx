@@ -20,6 +20,7 @@ import { IssueCardContent } from '../components/IssueCard'
 import { CreateIssueModal } from '../components/CreateIssueModal'
 import { IssueSlideOver } from '../components/IssueSlideOver'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import type { Issue, Sprint } from '@/types'
 
 // =============================================================================
@@ -241,9 +242,9 @@ export default function BoardPage() {
             <span className="text-base font-semibold text-foreground">
               {currentProject?.name ?? '—'}
             </span>
-            <span className="text-xs font-mono text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+            <Badge variant="secondary" className="h-4 px-1.5 text-xs font-mono text-muted-foreground">
               {currentProject?.key ?? ''}
-            </span>
+            </Badge>
             {activeSprint ? (
               <>
                 <span className="text-xs text-muted-foreground">·</span>
