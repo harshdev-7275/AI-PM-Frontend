@@ -4,6 +4,7 @@ import axios from 'axios'
 import { Loader2 } from 'lucide-react'
 import { useAuthStore } from '@/store/useAuthStore'
 import { acceptInvitation } from '@/services/api'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 
 // =============================================================================
 // STATE
@@ -101,12 +102,10 @@ export default function AcceptInvitePage() {
   if (pageState.status === 'error') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background px-4">
-        <div className="w-full max-w-sm rounded-xl border border-destructive/40 bg-card p-8 shadow-sm text-center">
-          <h1 className="text-lg font-semibold text-foreground mb-3">
-            Invite link problem
-          </h1>
-          <p className="text-sm text-muted-foreground">{pageState.message}</p>
-        </div>
+        <Alert variant="destructive" className="w-full max-w-sm border-destructive/40 shadow-sm">
+          <AlertTitle>Invite link problem</AlertTitle>
+          <AlertDescription>{pageState.message}</AlertDescription>
+        </Alert>
       </div>
     )
   }
