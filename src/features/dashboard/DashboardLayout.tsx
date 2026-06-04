@@ -1,13 +1,19 @@
 import { Fragment, useEffect, useState, Suspense } from 'react'
 import { Outlet, useLocation, useParams } from 'react-router-dom'
-import { ChevronRight, FolderKanban, Plus } from 'lucide-react'
+import { FolderKanban, Plus } from 'lucide-react'
 import {
   SidebarInset,
   SidebarProvider,
   SidebarTrigger,
 } from '@/components/ui/sidebar'
 import { Button } from '@/components/ui/button'
-import { cn } from '@/lib/utils'
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from '@/components/ui/breadcrumb'
 import { useOrgStore } from '@/store/useOrgStore'
 import { useProject } from '@/hooks/useProject'
 import { DashboardLoadingSkeleton } from '@/components/blocks/DashboardLoadingSkeleton'
@@ -28,27 +34,38 @@ function Topbar({ onNewProject }: { onNewProject: () => void }) {
   return (
     <header className="h-12 flex items-center px-4 border-b border-border bg-background shrink-0 gap-2">
       <SidebarTrigger className="-ml-1" />
-      <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-1.5">
-        <FolderKanban size={16} className="text-muted-foreground shrink-0" />
-        <span className="text-sm font-medium text-foreground truncate">
-          {currentOrg?.name ?? '—'}
-        </span>
-        {crumbs.map((crumb, i) => (
-          <Fragment key={`${crumb.label}-${i}`}>
-            <ChevronRight size={14} className="text-muted-foreground/50 shrink-0" />
-            <span
-              className={cn(
-                'truncate text-sm',
-                i === crumbs.length - 1
-                  ? 'font-medium text-foreground'
-                  : 'text-muted-foreground',
-              )}
-            >
-              {crumb.label}
-            </span>
-          </Fragment>
-        ))}
-      </nav>
+      <Breadcrumb className="min-w-0">
+        <BreadcrumbList className="flex-nowrap">
+          <BreadcrumbItem>
+            <FolderKanban size={16} className="text-muted-foreground shrink-0" />
+            {crumbs.length === 0 ? (
+              <BreadcrumbPage className="truncate font-medium">
+                {currentOrg?.name ?? '—'}
+              </BreadcrumbPage>
+            ) : (
+              <span className="truncate text-sm font-medium text-foreground">
+                {currentOrg?.name ?? '—'}
+              </span>
+            )}
+          </BreadcrumbItem>
+          {crumbs.map((crumb, i) => (
+            <Fragment key={`${crumb.label}-${i}`}>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                {i === crumbs.length - 1 ? (
+                  <BreadcrumbPage className="truncate font-medium">
+                    {crumb.label}
+                  </BreadcrumbPage>
+                ) : (
+                  <span className="truncate text-sm text-muted-foreground">
+                    {crumb.label}
+                  </span>
+                )}
+              </BreadcrumbItem>
+            </Fragment>
+          ))}
+        </BreadcrumbList>
+      </Breadcrumb>
 
       {/* Right-side actions */}
       <div className="ml-auto flex items-center gap-1">
