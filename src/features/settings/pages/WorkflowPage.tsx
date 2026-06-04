@@ -21,6 +21,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
 import { useWorkflow } from '@/hooks/useWorkflow'
 import { useProject } from '@/hooks/useProject'
@@ -46,46 +51,37 @@ interface ColorDotProps {
 }
 
 function ColorDot({ color, disabled = false, onChange }: ColorDotProps) {
-  const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!open) return
-    function handleOutside(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('mousedown', handleOutside)
-    return () => document.removeEventListener('mousedown', handleOutside)
-  }, [open])
-
   return (
-    <div ref={ref} className="relative shrink-0">
-      <button
-        type="button"
-        disabled={disabled}
-        aria-label="Change status color"
-        onClick={() => setOpen((o) => !o)}
-        style={{ backgroundColor: color }}
-        className="w-4 h-4 rounded-full border border-border/60 focus:outline-none focus:ring-2 focus:ring-brand-primary/40 disabled:opacity-40 disabled:cursor-not-allowed"
-      />
-      {open && (
-        <div className="absolute left-0 top-6 z-20 p-2 bg-popover border border-border rounded-lg shadow-md grid grid-cols-4 gap-1.5 w-[108px]">
-          {PRESET_COLORS.map((c) => (
-            <button
-              key={c}
-              type="button"
-              aria-label={c}
-              style={{ backgroundColor: c }}
-              onClick={() => { onChange(c); setOpen(false) }}
-              className={cn(
-                'w-5 h-5 rounded-full border-2 transition-transform hover:scale-110 focus:outline-none',
-                c === color ? 'border-foreground' : 'border-transparent',
-              )}
-            />
-          ))}
-        </div>
-      )}
-    </div>
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          disabled={disabled}
+          aria-label="Change status color"
+          style={{ backgroundColor: color }}
+          className="w-4 h-4 shrink-0 rounded-full border border-border/60 focus:outline-none focus:ring-2 focus:ring-brand-primary/40 disabled:opacity-40 disabled:cursor-not-allowed"
+        />
+      </PopoverTrigger>
+      <PopoverContent
+        align="start"
+        sideOffset={6}
+        className="w-auto p-2 grid grid-cols-4 gap-1.5"
+      >
+        {PRESET_COLORS.map((c) => (
+          <button
+            key={c}
+            type="button"
+            aria-label={c}
+            style={{ backgroundColor: c }}
+            onClick={() => onChange(c)}
+            className={cn(
+              'w-5 h-5 rounded-full border-2 transition-transform hover:scale-110 focus:outline-none',
+              c === color ? 'border-foreground' : 'border-transparent',
+            )}
+          />
+        ))}
+      </PopoverContent>
+    </Popover>
   )
 }
 
