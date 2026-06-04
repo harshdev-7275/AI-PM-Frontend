@@ -7,6 +7,7 @@ import { useProjectStore } from '@/store/useProjectStore'
 import { useProject } from '@/hooks/useProject'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { IssueSlideOver } from '../components/IssueSlideOver'
 import { SprintPanel } from '../components/SprintPanel'
 import { BacklogIssueRow } from '../components/BacklogIssueRow'
@@ -84,23 +85,23 @@ export default function BacklogPage() {
         </div>
 
         {/* Tab switcher */}
-        <div className="flex items-center gap-1 px-5">
-          {TABS.map((tab) => (
-            <button
-              key={tab}
-              type="button"
-              onClick={() => handleTabClick(tab)}
-              className={[
-                'px-3 py-2 text-sm font-medium border-b-2 transition-colors',
-                tab === 'Backlog'
-                  ? 'border-brand-primary text-brand-primary'
-                  : 'border-transparent text-muted-foreground hover:text-foreground',
-              ].join(' ')}
-            >
-              {tab}
-            </button>
-          ))}
-        </div>
+        <Tabs
+          value="Backlog"
+          onValueChange={(v) => handleTabClick(v as Tab)}
+          className="px-5"
+        >
+          <TabsList variant="line">
+            {TABS.map((tab) => (
+              <TabsTrigger
+                key={tab}
+                value={tab}
+                className="px-3 py-2 text-sm data-active:text-brand-primary after:bg-brand-primary"
+              >
+                {tab}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
       </div>
 
       {/* ------------------------------------------------------------------ */}
