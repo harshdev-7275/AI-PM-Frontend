@@ -42,7 +42,7 @@ async function fillStep1AndContinue(user: ReturnType<typeof userEvent.setup>) {
 
 async function goToStep3(user: ReturnType<typeof userEvent.setup>) {
   await fillStep1AndContinue(user)
-  await user.click(screen.getByRole('button', { name: 'Engineer' }))
+  await user.click(screen.getByRole('radio', { name: 'Engineer' }))
 }
 
 // ─── Step 1 ───────────────────────────────────────────────────────────────────
@@ -76,7 +76,7 @@ describe('Step 1 — Account details', () => {
 
     await fillStep1AndContinue(user)
 
-    expect(screen.getByRole('button', { name: 'Engineer' })).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: 'Engineer' })).toBeInTheDocument()
   })
 })
 
@@ -88,7 +88,7 @@ describe('Step 2 — Role selection', () => {
     renderSignupPage()
 
     await fillStep1AndContinue(user)
-    await user.click(screen.getByRole('button', { name: 'Engineer' }))
+    await user.click(screen.getByRole('radio', { name: 'Engineer' }))
 
     expect(screen.getByRole('button', { name: /create workspace/i })).toBeInTheDocument()
   })
@@ -177,7 +177,7 @@ describe('Step 3 — Organization details', () => {
     await goToStep3(user)
     await user.click(screen.getByRole('button', { name: /back/i }))
 
-    expect(screen.getByRole('button', { name: 'Engineer' })).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: 'Engineer' })).toBeInTheDocument()
   })
 })
 

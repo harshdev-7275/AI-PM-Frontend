@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { X, ChevronDown } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
 import type { Issue, IssueType, IssuePriority, Sprint } from '@/types'
 
 // =============================================================================
@@ -94,9 +95,9 @@ export function BacklogIssueRow({
       </button>
 
       {/* Type badge */}
-      <span className="text-[10px] text-muted-foreground/60 bg-muted px-1.5 py-0.5 rounded shrink-0">
+      <Badge variant="secondary" className="h-4 px-1.5 text-[10px] rounded text-muted-foreground/80 shrink-0">
         {typeLabel}
-      </span>
+      </Badge>
 
       {/* Actions — visible on row hover */}
       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">

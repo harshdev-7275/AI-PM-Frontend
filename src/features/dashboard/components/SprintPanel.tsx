@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { ChevronRight, Play, CheckCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import type { Sprint, Issue, SprintStatus } from '@/types'
 import { BacklogIssueRow } from './BacklogIssueRow'
 
@@ -74,9 +75,9 @@ export function SprintPanel({
           </span>
         )}
 
-        <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded capitalize shrink-0 ${STATUS_BADGE[sprint.status]}`}>
+        <Badge className={`h-4 px-1.5 text-[10px] rounded capitalize shrink-0 ${STATUS_BADGE[sprint.status]}`}>
           {sprint.status}
-        </span>
+        </Badge>
 
         <span className="text-[11px] text-muted-foreground shrink-0">
           {issues.length} issue{issues.length !== 1 ? 's' : ''}

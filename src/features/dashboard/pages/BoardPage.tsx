@@ -20,6 +20,8 @@ import { IssueCardContent } from '../components/IssueCard'
 import { CreateIssueModal } from '../components/CreateIssueModal'
 import { IssueSlideOver } from '../components/IssueSlideOver'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import type { Issue, Sprint } from '@/types'
 
 // =============================================================================
@@ -241,9 +243,9 @@ export default function BoardPage() {
             <span className="text-base font-semibold text-foreground">
               {currentProject?.name ?? '—'}
             </span>
-            <span className="text-xs font-mono text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+            <Badge variant="secondary" className="h-4 px-1.5 text-xs font-mono text-muted-foreground">
               {currentProject?.key ?? ''}
-            </span>
+            </Badge>
             {activeSprint ? (
               <>
                 <span className="text-xs text-muted-foreground">·</span>
@@ -297,29 +299,29 @@ export default function BoardPage() {
         </div>
 
         {/* Tab switcher */}
-        <div className="flex items-center gap-1 px-5">
-          {TABS.map((tab) => (
-            <button
-              key={tab}
-              type="button"
-              onClick={() => {
-                if (tab === 'Backlog') {
-                  navigate(`/${slug}/projects/${projectId}/backlog`)
-                } else {
-                  setActiveTab(tab)
-                }
-              }}
-              className={[
-                'px-3 py-2 text-sm font-medium border-b-2 transition-colors',
-                activeTab === tab
-                  ? 'border-brand-primary text-brand-primary'
-                  : 'border-transparent text-muted-foreground hover:text-foreground',
-              ].join(' ')}
-            >
-              {tab}
-            </button>
-          ))}
-        </div>
+        <Tabs
+          value={activeTab}
+          onValueChange={(v) => {
+            if (v === 'Backlog') {
+              navigate(`/${slug}/projects/${projectId}/backlog`)
+            } else {
+              setActiveTab(v as Tab)
+            }
+          }}
+          className="px-5"
+        >
+          <TabsList variant="line">
+            {TABS.map((tab) => (
+              <TabsTrigger
+                key={tab}
+                value={tab}
+                className="px-3 py-2 text-sm data-active:text-brand-primary after:bg-brand-primary"
+              >
+                {tab}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
       </div>
 
       {/* ------------------------------------------------------------------ */}

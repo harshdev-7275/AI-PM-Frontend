@@ -3,6 +3,7 @@ import { useNavigate, useOutletContext, useParams } from 'react-router-dom'
 import { MoreHorizontal, FolderPlus, LayoutGrid } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
+import { Progress } from '@/components/ui/progress'
 import { useOrgStore } from '@/store/useOrgStore'
 import { useProjectStore } from '@/store/useProjectStore'
 import { useIssueStore } from '@/store/useIssueStore'
@@ -120,15 +121,11 @@ function ProjectCard({ project, stats, onOpen, index }: ProjectCardProps) {
 
       {/* Row 4 — Progress bar (linear) */}
       <div className="flex items-center gap-2">
-        <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
-          <motion.div
-            className="h-full rounded-full"
-            style={{ backgroundColor: color }}
-            initial={{ width: 0 }}
-            animate={{ width: `${stats.completionPercentage}%` }}
-            transition={{ duration: 0.6, ease: 'easeOut' }}
-          />
-        </div>
+        <Progress
+          value={stats.completionPercentage}
+          className="h-1.5 flex-1 [&>[data-slot=progress-indicator]]:bg-[var(--project-color)]"
+          style={{ '--project-color': color } as React.CSSProperties}
+        />
         <span className="text-[10px] font-medium text-muted-foreground tabular-nums shrink-0">
           {stats.completionPercentage}%
         </span>

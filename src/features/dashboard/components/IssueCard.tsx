@@ -1,5 +1,6 @@
 import { useRef, useEffect } from 'react'
 import { useDraggable } from '@dnd-kit/core'
+import { Badge } from '@/components/ui/badge'
 import type { Issue, IssueType, IssuePriority } from '@/types'
 
 // =============================================================================
@@ -91,9 +92,9 @@ export function IssueCardContent({
         {issue.title}
       </p>
 
-      <span className="text-[10px] text-muted-foreground/60 bg-muted px-1 py-0.5 rounded w-fit">
+      <Badge variant="secondary" className="h-4 px-1 text-[10px] rounded text-muted-foreground/80 w-fit">
         {typeLabel}
-      </span>
+      </Badge>
     </div>
   )
 }

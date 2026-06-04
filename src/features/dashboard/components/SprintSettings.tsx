@@ -3,6 +3,7 @@ import { ChevronRight, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Badge } from '@/components/ui/badge'
 import {
   Select,
   SelectContent,
@@ -102,9 +103,9 @@ export function SprintSettings({ project, sprintCount, onSave }: SprintSettingsP
         />
         <span className="text-sm font-medium text-foreground flex-1">Sprint settings</span>
         {project.cadenceAutoCreate && (
-          <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-500 font-medium shrink-0">
+          <Badge className="h-4 px-1.5 text-[10px] rounded bg-blue-500/15 text-blue-500 shrink-0">
             Auto-create on
-          </span>
+          </Badge>
         )}
       </button>
 
