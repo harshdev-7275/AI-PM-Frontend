@@ -20,6 +20,14 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import { RoleBadge } from '@/components/primitives/RoleBadge'
 import type { OrgMember, ProjectMember, ProjectRole } from '@/types'
 
@@ -88,64 +96,72 @@ interface MemberRowProps {
 
 function MemberRow({ member, isSelf, canManage, onRole, onRemove }: MemberRowProps) {
   return (
-    <div className="flex items-center gap-3 px-4 py-3">
-      <div className="w-8 h-8 rounded-full bg-brand-primary/15 flex items-center justify-center text-[11px] font-semibold text-brand-primary shrink-0 select-none">
-        {member.name.slice(0, 2).toUpperCase()}
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-foreground truncate">
-          {member.name}{isSelf && <span className="ml-1.5 text-xs text-muted-foreground font-normal">(you)</span>}
-        </p>
-        <p className="text-xs text-muted-foreground truncate">{member.email}</p>
-      </div>
+    <TableRow>
+      <TableCell className="py-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-8 h-8 rounded-full bg-brand-primary/15 flex items-center justify-center text-[11px] font-semibold text-brand-primary shrink-0 select-none">
+            {member.name.slice(0, 2).toUpperCase()}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-foreground truncate">
+              {member.name}{isSelf && <span className="ml-1.5 text-xs text-muted-foreground font-normal">(you)</span>}
+            </p>
+            <p className="text-xs text-muted-foreground truncate">{member.email}</p>
+          </div>
+        </div>
+      </TableCell>
 
-      {canManage ? (
-        <Select value={member.role} onValueChange={(v) => onRole(member.userId, v as ProjectRole)}>
-          <SelectTrigger size="sm" aria-label={`Role for ${member.name}`} className="w-28">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="lead">Lead</SelectItem>
-            <SelectItem value="member">Member</SelectItem>
-            <SelectItem value="viewer">Viewer</SelectItem>
-          </SelectContent>
-        </Select>
-      ) : (
-        <RoleBadge role={member.role} />
-      )}
+      <TableCell>
+        {canManage ? (
+          <Select value={member.role} onValueChange={(v) => onRole(member.userId, v as ProjectRole)}>
+            <SelectTrigger size="sm" aria-label={`Role for ${member.name}`} className="w-28">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="lead">Lead</SelectItem>
+              <SelectItem value="member">Member</SelectItem>
+              <SelectItem value="viewer">Viewer</SelectItem>
+            </SelectContent>
+          </Select>
+        ) : (
+          <RoleBadge role={member.role} />
+        )}
+      </TableCell>
 
-      {canManage && (
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <button
-              type="button"
-              aria-label={`Remove ${member.name}`}
-              className="text-xs text-destructive hover:underline ml-2 shrink-0"
-            >
-              Remove
-            </button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Remove {member.name} from this project?</AlertDialogTitle>
-              <AlertDialogDescription>
-                They will lose access to this project. They keep their access
-                to the workspace and any other project they belong to.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction
-                variant="destructive"
-                onClick={() => onRemove(member.userId)}
+      <TableCell className="text-right">
+        {canManage && (
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <button
+                type="button"
+                aria-label={`Remove ${member.name}`}
+                className="text-xs text-destructive hover:underline shrink-0"
               >
-                Remove from project
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      )}
-    </div>
+                Remove
+              </button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Remove {member.name} from this project?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  They will lose access to this project. They keep their access
+                  to the workspace and any other project they belong to.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  variant="destructive"
+                  onClick={() => onRemove(member.userId)}
+                >
+                  Remove from project
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
+      </TableCell>
+    </TableRow>
   )
 }
 
@@ -202,22 +218,35 @@ export default function ProjectMembersPage() {
 
       <section>
         <h2 className="text-sm font-semibold text-foreground mb-3">Members ({project.members.length})</h2>
-        <div className="rounded-md border border-border divide-y divide-border">
+        <div className="rounded-md border border-border overflow-hidden">
           {project.isLoading ? (
             <p className="px-4 py-6 text-sm text-muted-foreground text-center">Loading…</p>
           ) : project.members.length === 0 ? (
             <p className="px-4 py-6 text-sm text-muted-foreground text-center">No members yet.</p>
           ) : (
-            project.members.map((m) => (
-              <MemberRow
-                key={m.id}
-                member={m}
-                isSelf={m.userId === user?.id}
-                canManage={canManage}
-                onRole={(userId, role) => void project.updateRole(userId, role)}
-                onRemove={(userId) => void project.remove(userId)}
-              />
-            ))
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/30 hover:bg-muted/30">
+                  <TableHead className="h-9 px-4 text-xs font-medium text-muted-foreground">Name</TableHead>
+                  <TableHead className="h-9 px-4 text-xs font-medium text-muted-foreground">Role</TableHead>
+                  <TableHead className="h-9 px-4 text-right">
+                    <span className="sr-only">Actions</span>
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {project.members.map((m) => (
+                  <MemberRow
+                    key={m.id}
+                    member={m}
+                    isSelf={m.userId === user?.id}
+                    canManage={canManage}
+                    onRole={(userId, role) => void project.updateRole(userId, role)}
+                    onRemove={(userId) => void project.remove(userId)}
+                  />
+                ))}
+              </TableBody>
+            </Table>
           )}
         </div>
       </section>

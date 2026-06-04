@@ -22,6 +22,14 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import { RoleBadge } from '@/components/primitives/RoleBadge'
 import type { OrgMember, InviteRole, Invitation } from '@/types'
 
@@ -31,14 +39,19 @@ import type { OrgMember, InviteRole, Invitation } from '@/types'
 
 function SkeletonRow() {
   return (
-    <div role="status" aria-label="Loading member" className="flex items-center gap-3 px-4 py-3 animate-pulse">
-      <div className="w-8 h-8 rounded-full bg-muted shrink-0" />
-      <div className="flex-1 space-y-1.5">
-        <div className="h-3 w-32 rounded bg-muted" />
-        <div className="h-2.5 w-48 rounded bg-muted" />
-      </div>
-      <div className="h-5 w-14 rounded-full bg-muted" />
-    </div>
+    <TableRow role="status" aria-label="Loading member" className="animate-pulse">
+      <TableCell className="py-3">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-full bg-muted shrink-0" />
+          <div className="flex-1 space-y-1.5">
+            <div className="h-3 w-32 rounded bg-muted" />
+            <div className="h-2.5 w-48 rounded bg-muted" />
+          </div>
+        </div>
+      </TableCell>
+      <TableCell><div className="h-5 w-14 rounded-full bg-muted" /></TableCell>
+      <TableCell />
+    </TableRow>
   )
 }
 
@@ -60,103 +73,112 @@ function MemberRow({
   const initials = member.name.slice(0, 2).toUpperCase()
 
   return (
-    <div className="flex items-center gap-3 px-4 py-3">
-      {/* Avatar */}
-      <div className="w-8 h-8 rounded-full bg-brand-primary/15 flex items-center justify-center text-[11px] font-semibold text-brand-primary shrink-0 select-none">
-        {initials}
-      </div>
+    <TableRow>
+      {/* Member cell — avatar + name + email */}
+      <TableCell className="py-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-8 h-8 rounded-full bg-brand-primary/15 flex items-center justify-center text-[11px] font-semibold text-brand-primary shrink-0 select-none">
+            {initials}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-foreground truncate">
+              {member.name}
+              {isSelf && <span className="ml-1.5 text-xs text-muted-foreground font-normal">(you)</span>}
+            </p>
+            <p className="text-xs text-muted-foreground truncate">{member.email}</p>
+          </div>
+        </div>
+      </TableCell>
 
-      {/* Name + email */}
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-foreground truncate">
-          {member.name}
-          {isSelf && <span className="ml-1.5 text-xs text-muted-foreground font-normal">(you)</span>}
-        </p>
-        <p className="text-xs text-muted-foreground truncate">{member.email}</p>
-      </div>
+      {/* Role cell — badge or dropdown */}
+      <TableCell>
+        {canChangeRole ? (
+          <Select
+            value={member.role}
+            onValueChange={(v) => void onUpdateRole(slug, member.userId, v as InviteRole)}
+          >
+            <SelectTrigger size="sm" aria-label={`Role for ${member.name}`} className="w-28">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="member">Member</SelectItem>
+              <SelectItem value="admin">Admin</SelectItem>
+              <SelectItem value="viewer">Viewer</SelectItem>
+            </SelectContent>
+          </Select>
+        ) : (
+          <RoleBadge role={member.role} />
+        )}
+      </TableCell>
 
-      {/* Role badge / dropdown */}
-      {canChangeRole ? (
-        <Select
-          value={member.role}
-          onValueChange={(v) => void onUpdateRole(slug, member.userId, v as InviteRole)}
-        >
-          <SelectTrigger size="sm" aria-label={`Role for ${member.name}`} className="w-28">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="member">Member</SelectItem>
-            <SelectItem value="admin">Admin</SelectItem>
-            <SelectItem value="viewer">Viewer</SelectItem>
-          </SelectContent>
-        </Select>
-      ) : (
-        <RoleBadge role={member.role} />
-      )}
+      {/* Actions cell */}
+      <TableCell className="text-right">
+        <div className="flex items-center justify-end gap-2">
+          {/* Transfer ownership */}
+          {canTransfer && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <button
+                  type="button"
+                  aria-label={`Make ${member.name} the owner`}
+                  className="text-xs text-muted-foreground hover:text-foreground hover:underline shrink-0"
+                >
+                  Make owner
+                </button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Transfer ownership to {member.name}?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    You will be demoted to admin and {member.name} will become the
+                    workspace owner. This action cannot be undone by you.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={() => void onTransfer(slug, member.userId)}>
+                    Transfer ownership
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
 
-      {/* Transfer ownership */}
-      {canTransfer && (
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <button
-              type="button"
-              aria-label={`Make ${member.name} the owner`}
-              className="text-xs text-muted-foreground hover:text-foreground hover:underline ml-2 shrink-0"
-            >
-              Make owner
-            </button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Transfer ownership to {member.name}?</AlertDialogTitle>
-              <AlertDialogDescription>
-                You will be demoted to admin and {member.name} will become the
-                workspace owner. This action cannot be undone by you.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={() => void onTransfer(slug, member.userId)}>
-                Transfer ownership
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      )}
-
-      {/* Remove button */}
-      {canRemove && (
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <button
-              type="button"
-              aria-label={`Remove ${member.name}`}
-              className="text-xs text-destructive hover:underline ml-2 shrink-0"
-            >
-              Remove
-            </button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Remove {member.name}?</AlertDialogTitle>
-              <AlertDialogDescription>
-                They will lose access to this workspace and every project in it.
-                You can re-invite them later if needed.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction
-                variant="destructive"
-                onClick={() => void onRemove(slug, member.userId)}
-              >
-                Remove member
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      )}
-    </div>
+          {/* Remove button */}
+          {canRemove && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <button
+                  type="button"
+                  aria-label={`Remove ${member.name}`}
+                  className="text-xs text-destructive hover:underline shrink-0"
+                >
+                  Remove
+                </button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Remove {member.name}?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    They will lose access to this workspace and every project in it.
+                    You can re-invite them later if needed.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    variant="destructive"
+                    onClick={() => void onRemove(slug, member.userId)}
+                  >
+                    Remove member
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
+        </div>
+      </TableCell>
+    </TableRow>
   )
 }
 
@@ -298,36 +320,51 @@ export default function MembersPage() {
           Members ({members.length})
         </h2>
 
-        <div className="rounded-md border border-border divide-y divide-border">
-          {isLoading ? (
-            <>
-              <SkeletonRow />
-              <SkeletonRow />
-              <SkeletonRow />
-            </>
-          ) : members.length === 0 ? (
+        <div className="rounded-md border border-border overflow-hidden">
+          {!isLoading && members.length === 0 ? (
             <p className="px-4 py-6 text-sm text-muted-foreground text-center">
               No members yet.
             </p>
           ) : (
-            members.map((member) => {
-              const isSelf       = member.userId === user?.id
-              const isOtherOwner = member.role === 'owner'
-              return (
-                <MemberRow
-                  key={member.id}
-                  member={member}
-                  isSelf={isSelf}
-                  slug={slug ?? ''}
-                  canChangeRole={isOwner && !isSelf && !isOtherOwner}
-                  canRemove={canManage && !isSelf}
-                  canTransfer={isOwner && !isSelf && !isOtherOwner}
-                  onUpdateRole={handleUpdateRole}
-                  onRemove={handleRemoveMember}
-                  onTransfer={handleTransferOwnership}
-                />
-              )
-            })
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/30 hover:bg-muted/30">
+                  <TableHead className="h-9 px-4 text-xs font-medium text-muted-foreground">Name</TableHead>
+                  <TableHead className="h-9 px-4 text-xs font-medium text-muted-foreground">Role</TableHead>
+                  <TableHead className="h-9 px-4 text-right">
+                    <span className="sr-only">Actions</span>
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {isLoading ? (
+                  <>
+                    <SkeletonRow />
+                    <SkeletonRow />
+                    <SkeletonRow />
+                  </>
+                ) : (
+                  members.map((member) => {
+                    const isSelf       = member.userId === user?.id
+                    const isOtherOwner = member.role === 'owner'
+                    return (
+                      <MemberRow
+                        key={member.id}
+                        member={member}
+                        isSelf={isSelf}
+                        slug={slug ?? ''}
+                        canChangeRole={isOwner && !isSelf && !isOtherOwner}
+                        canRemove={canManage && !isSelf}
+                        canTransfer={isOwner && !isSelf && !isOtherOwner}
+                        onUpdateRole={handleUpdateRole}
+                        onRemove={handleRemoveMember}
+                        onTransfer={handleTransferOwnership}
+                      />
+                    )
+                  })
+                )}
+              </TableBody>
+            </Table>
           )}
         </div>
       </section>
