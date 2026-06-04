@@ -18,6 +18,7 @@ const MembersPage       = lazy(() => import('@/features/settings/pages/MembersPa
 const WorkflowPage      = lazy(() => import('@/features/settings/pages/WorkflowPage'))
 const AcceptInvitePage  = lazy(() => import('@/features/settings/pages/AcceptInvitePage'))
 const ProjectMembersPage = lazy(() => import('@/features/dashboard/pages/ProjectMembersPage'))
+const AnalyticsPage      = lazy(() => import('@/features/dashboard/pages/AnalyticsPage'))
 
 export function AppRouter() {
   return (
@@ -51,6 +52,7 @@ export function AppRouter() {
           <Route path="projects/:projectId/backlog" element={<BacklogPage />} />
           <Route path="projects/:projectId/members" element={<ProjectMembersPage />} />
           <Route path="ai-assistant" element={<AIAssistantPage />} />
+          <Route path="analytics"    element={<AnalyticsPage />} />
           <Route path="settings" element={<SettingsPage />}>
             <Route path="members"   element={<MembersPage />} />
             <Route path="workflow"  element={<WorkflowPage />} />
