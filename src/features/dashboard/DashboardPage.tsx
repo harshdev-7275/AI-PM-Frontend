@@ -1,9 +1,16 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useOutletContext, useParams } from 'react-router-dom'
-import { MoreHorizontal, FolderPlus, LayoutGrid } from 'lucide-react'
+import { MoreHorizontal, FolderPlus, LayoutGrid, FolderOpen, Copy, Archive, Trash2 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { useOrgStore } from '@/store/useOrgStore'
 import { useProjectStore } from '@/store/useProjectStore'
 import { useIssueStore } from '@/store/useIssueStore'
@@ -45,6 +52,7 @@ interface ProjectCardProps {
 }
 
 function ProjectCard({ project, stats, onOpen, index }: ProjectCardProps) {
+  const { slug } = useParams<{ slug: string }>()
   const color = project.color ?? '#6366f1'
 
   return (
@@ -86,14 +94,44 @@ function ProjectCard({ project, stats, onOpen, index }: ProjectCardProps) {
         <span className="text-[10px] font-mono text-muted-foreground shrink-0">
           {project.key}
         </span>
-        <button
-          type="button"
-          onClick={(e) => e.stopPropagation()}
-          aria-label="Project options"
-          className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground opacity-0 group-hover:opacity-100 hover:bg-muted hover:text-foreground transition-all"
-        >
-          <MoreHorizontal size={12} />
-        </button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              onClick={(e) => e.stopPropagation()}
+              aria-label="Project options"
+              className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground opacity-0 group-hover:opacity-100 hover:bg-muted hover:text-foreground transition-all"
+            >
+              <MoreHorizontal size={12} />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            align="end"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <DropdownMenuItem onSelect={() => onOpen(project)}>
+              <FolderOpen className="text-muted-foreground" />
+              Open project
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onSelect={() => {
+                void navigator.clipboard.writeText(`${window.location.origin}/${slug}/projects/${project.id}/board`)
+              }}
+            >
+              <Copy className="text-muted-foreground" />
+              Copy link
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem disabled>
+              <Archive className="text-muted-foreground" />
+              Archive
+            </DropdownMenuItem>
+            <DropdownMenuItem disabled variant="destructive">
+              <Trash2 />
+              Delete project
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {/* Row 2 — Description (omitted if no description) */}
