@@ -9,6 +9,17 @@ import { Button } from '@/components/ui/button'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog'
 import { RoleBadge } from '@/components/primitives/RoleBadge'
 import type { OrgMember, ProjectMember, ProjectRole } from '@/types'
 
@@ -104,14 +115,35 @@ function MemberRow({ member, isSelf, canManage, onRole, onRemove }: MemberRowPro
       )}
 
       {canManage && (
-        <button
-          type="button"
-          aria-label={`Remove ${member.name}`}
-          onClick={() => onRemove(member.userId)}
-          className="text-xs text-destructive hover:underline ml-2 shrink-0"
-        >
-          Remove
-        </button>
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <button
+              type="button"
+              aria-label={`Remove ${member.name}`}
+              className="text-xs text-destructive hover:underline ml-2 shrink-0"
+            >
+              Remove
+            </button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Remove {member.name} from this project?</AlertDialogTitle>
+              <AlertDialogDescription>
+                They will lose access to this project. They keep their access
+                to the workspace and any other project they belong to.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                variant="destructive"
+                onClick={() => onRemove(member.userId)}
+              >
+                Remove from project
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       )}
     </div>
   )

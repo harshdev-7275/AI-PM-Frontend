@@ -11,6 +11,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog'
 import { RoleBadge } from '@/components/primitives/RoleBadge'
 import type { OrgMember, InviteRole, Invitation } from '@/types'
 
@@ -85,30 +96,65 @@ function MemberRow({
 
       {/* Transfer ownership */}
       {canTransfer && (
-        <button
-          type="button"
-          aria-label={`Make ${member.name} the owner`}
-          onClick={() => {
-            if (window.confirm(`Transfer ownership to ${member.name}? You will become an admin.`)) {
-              void onTransfer(slug, member.userId)
-            }
-          }}
-          className="text-xs text-muted-foreground hover:text-foreground hover:underline ml-2 shrink-0"
-        >
-          Make owner
-        </button>
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <button
+              type="button"
+              aria-label={`Make ${member.name} the owner`}
+              className="text-xs text-muted-foreground hover:text-foreground hover:underline ml-2 shrink-0"
+            >
+              Make owner
+            </button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Transfer ownership to {member.name}?</AlertDialogTitle>
+              <AlertDialogDescription>
+                You will be demoted to admin and {member.name} will become the
+                workspace owner. This action cannot be undone by you.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={() => void onTransfer(slug, member.userId)}>
+                Transfer ownership
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       )}
 
       {/* Remove button */}
       {canRemove && (
-        <button
-          type="button"
-          aria-label={`Remove ${member.name}`}
-          onClick={() => void onRemove(slug, member.userId)}
-          className="text-xs text-destructive hover:underline ml-2 shrink-0"
-        >
-          Remove
-        </button>
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <button
+              type="button"
+              aria-label={`Remove ${member.name}`}
+              className="text-xs text-destructive hover:underline ml-2 shrink-0"
+            >
+              Remove
+            </button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Remove {member.name}?</AlertDialogTitle>
+              <AlertDialogDescription>
+                They will lose access to this workspace and every project in it.
+                You can re-invite them later if needed.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                variant="destructive"
+                onClick={() => void onRemove(slug, member.userId)}
+              >
+                Remove member
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       )}
     </div>
   )
