@@ -6,6 +6,11 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import {
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
+} from '@/components/ui/resizable'
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -99,20 +104,23 @@ export default function AIAssistantPage() {
   const selectedProject = projects.find((p) => p.id === selectedProjectId)
 
   return (
-    <div className="flex h-full overflow-hidden">
-
+    <ResizablePanelGroup
+      orientation="horizontal"
+      className="h-full"
+    >
       {/* ------------------------------------------------------------------ */}
       {/* LEFT — Context panel                                                */}
       {/* ------------------------------------------------------------------ */}
-      <aside className="w-[280px] shrink-0 flex flex-col gap-5 border-r border-border bg-sidebar p-4 overflow-y-auto">
-        <div>
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-            Context
-          </p>
+      <ResizablePanel defaultSize={22} minSize={16} maxSize={40} className="bg-sidebar">
+        <aside className="h-full flex flex-col gap-5 p-4 overflow-y-auto">
+          <div>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+              Context
+            </p>
 
-          {/* Project selector */}
-          <Select value={selectedProjectId} onValueChange={handleProjectChange}>
-            <SelectTrigger className="w-full h-8 text-sm">
+            {/* Project selector */}
+            <Select value={selectedProjectId} onValueChange={handleProjectChange}>
+              <SelectTrigger className="w-full h-8 text-sm">
               <SelectValue placeholder="Select a project…" />
             </SelectTrigger>
             <SelectContent>
@@ -169,12 +177,16 @@ export default function AIAssistantPage() {
             ))}
           </div>
         </div>
-      </aside>
+        </aside>
+      </ResizablePanel>
+
+      <ResizableHandle withHandle />
 
       {/* ------------------------------------------------------------------ */}
       {/* RIGHT — Chat area                                                   */}
       {/* ------------------------------------------------------------------ */}
-      <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+      <ResizablePanel defaultSize={78} minSize={45}>
+        <div className="flex flex-col h-full min-w-0 overflow-hidden">
 
         {/* Messages */}
         <div className="flex-1 overflow-y-auto px-6 py-6 space-y-4">
@@ -262,7 +274,8 @@ export default function AIAssistantPage() {
             AI can create issues, query sprint status, and more · Enter to send · Shift+Enter for newline
           </p>
         </div>
-      </div>
-    </div>
+        </div>
+      </ResizablePanel>
+    </ResizablePanelGroup>
   )
 }
