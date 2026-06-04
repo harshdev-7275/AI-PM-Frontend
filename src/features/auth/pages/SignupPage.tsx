@@ -12,6 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { Icon } from '@/components/primitives/Icon'
 import AuthLayout from '@/features/auth/components/AuthLayout'
 import { useAuth } from '@/hooks/useAuth'
@@ -213,17 +214,26 @@ function Step2({ onRoleSelect, onBack }: Step2Props) {
           <StepHeader step={2} total={3} title="What's your role?" />
         </motion.div>
 
-        <motion.div variants={itemVariants} className="w-full grid grid-cols-2 gap-2">
-          {ROLES.map((role) => (
-            <button
-              key={role}
-              type="button"
-              onClick={() => onRoleSelect(role)}
-              className="px-4 py-3 rounded-lg text-sm border transition-colors text-left dark:bg-white/[0.04] bg-gray-100 dark:border-white/10 border-gray-300 dark:text-white/60 text-gray-700 dark:hover:bg-white/[0.08] hover:bg-gray-200 dark:hover:text-white/80 hover:text-gray-900"
-            >
-              {role}
-            </button>
-          ))}
+        <motion.div variants={itemVariants} className="w-full">
+          <ToggleGroup
+            type="single"
+            value=""
+            onValueChange={(v) => { if (v) onRoleSelect(v) }}
+            spacing={2}
+            aria-label="Role"
+            className="w-full grid grid-cols-2 gap-2"
+          >
+            {ROLES.map((role) => (
+              <ToggleGroupItem
+                key={role}
+                value={role}
+                aria-label={role}
+                className="h-auto px-4 py-3 rounded-lg text-sm justify-start text-left dark:bg-white/[0.04] bg-gray-100 dark:border-white/10 border-gray-300 dark:text-white/60 text-gray-700 dark:hover:bg-white/[0.08] hover:bg-gray-200 dark:hover:text-white/80 hover:text-gray-900 dark:data-[state=on]:bg-brand-primary/20 data-[state=on]:bg-brand-primary/10 data-[state=on]:text-brand-primary"
+              >
+                {role}
+              </ToggleGroupItem>
+            ))}
+          </ToggleGroup>
         </motion.div>
 
         <motion.div variants={itemVariants}>
