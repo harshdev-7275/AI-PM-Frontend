@@ -10,7 +10,7 @@ import {
   loginUser, registerUser, logoutUser, refreshToken, getMe,
   inviteMember, getOrgMembers, updateMemberRole, removeMember, acceptInvitation,
   getWorkflowStatuses, createStatus, updateStatus, deleteStatus, StatusHasIssuesError,
-  getProjectMembers,
+  getProjectMembers, sendChatMessage,
 } from './api'
 
 describe('loginUser', () => {
@@ -523,5 +523,62 @@ describe('getProjectMembers', () => {
     expect(result[0]?.name).toBe(mockProjectMember.name)
     expect(result[0]?.avatarUrl).toBe(mockProjectMember.avatarUrl)
     expect(result[0]?.role).toBe(mockProjectMember.role)
+  })
+})
+
+describe('sendChatMessage', () => {
+  it('parses a validation_failed response (pre-flight entity check)', async () => {
+    // The AI service returns this when the user mentions an entity (assignee,
+    // sprint, issue number) that doesn't exist. The frontend MUST surface it
+    // — silent failure here is a regression (the user sees nothing).
+    server.use(
+      http.post('http://localhost:4000/api/chat', () =>
+        HttpResponse.json({
+          intent: 'CREATE_ISSUE',
+          result: { message: "No team member named 'Alice' found in this project." },
+          status: 'validation_failed',
+          error:  null,
+        })
+      )
+    )
+    const res = await sendChatMessage(
+      'create a bug, assign to Alice',
+      'user-id',
+      'test-org',
+      'cccccccc-0000-4000-8000-000000000001',
+    )
+    expect(res.status).toBe('validation_failed')
+    expect(res.result?.message).toMatch(/No team member named 'Alice'/)
+    expect(res.intent).toBe('CREATE_ISSUE')
+  })
+
+  it('parses an awaiting_confirmation response', async () => {
+    server.use(
+      http.post('http://localhost:4000/api/chat', () =>
+        HttpResponse.json({
+          intent: 'CREATE_ISSUE',
+          result: { message: "I'll create a bug titled 'x' with medium priority. Reply 'yes' to confirm or 'no' to cancel." },
+          status: 'awaiting_confirmation',
+          error:  null,
+        })
+      )
+    )
+    const res = await sendChatMessage('create a bug called x', 'user-id', 'test-org', 'cccccccc-0000-4000-8000-000000000001')
+    expect(res.status).toBe('awaiting_confirmation')
+  })
+
+  it('parses a quota_exceeded response', async () => {
+    server.use(
+      http.post('http://localhost:4000/api/chat', () =>
+        HttpResponse.json({
+          intent: null,
+          result: { message: 'This workspace has reached its AI usage limit.' },
+          status: 'quota_exceeded',
+          error:  null,
+        })
+      )
+    )
+    const res = await sendChatMessage('hi', 'user-id', 'test-org', 'cccccccc-0000-4000-8000-000000000001')
+    expect(res.status).toBe('quota_exceeded')
   })
 })
