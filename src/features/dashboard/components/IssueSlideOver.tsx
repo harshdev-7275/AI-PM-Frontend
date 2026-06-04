@@ -1,11 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { X, ChevronDown } from 'lucide-react'
+import { X, ChevronDown, Calendar as CalendarIcon } from 'lucide-react'
+import { format } from 'date-fns'
 import { useParams } from 'react-router-dom'
 import { useIssueDetail } from '@/hooks/useIssueDetail'
 import { useIssueStore } from '@/store/useIssueStore'
 import { useProjectStore } from '@/store/useProjectStore'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Calendar } from '@/components/ui/calendar'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { cn } from '@/lib/utils'
 import { ActivityFeed } from './ActivityFeed'
 import type { IssuePriority, IssueType, ProjectMember } from '@/types'
 
@@ -568,12 +573,37 @@ export function IssueSlideOver({ issueId, isOpen, onClose }: IssueSlideOverProps
 
                   {/* Due date */}
                   <MetaRow label="Due date">
-                    <input
-                      type="date"
-                      value={issue.dueDate ? issue.dueDate.slice(0, 10) : ''}
-                      onChange={(e) => void handleUpdateField('dueDate', e.target.value || null)}
-                      className="h-7 w-full rounded-md border border-input bg-background px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-brand-primary/40 transition-colors"
-                    />
+                    {(() => {
+                      const due = issue.dueDate ? issue.dueDate.slice(0, 10) : ''
+                      const selected = due ? new Date(`${due}T00:00:00`) : undefined
+                      return (
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              className={cn(
+                                'h-7 w-full px-2 text-xs font-normal justify-start gap-2',
+                                !due && 'text-muted-foreground/60 italic',
+                              )}
+                            >
+                              <CalendarIcon size={12} className="text-muted-foreground" />
+                              {due ? format(selected!, 'PP') : 'No due date'}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={selected}
+                              onSelect={(d) =>
+                                void handleUpdateField('dueDate', d ? format(d, 'yyyy-MM-dd') : null)
+                              }
+                              autoFocus
+                            />
+                          </PopoverContent>
+                        </Popover>
+                      )
+                    })()}
                   </MetaRow>
 
                   {/* Created */}

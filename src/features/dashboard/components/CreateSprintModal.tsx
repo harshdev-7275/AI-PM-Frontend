@@ -1,9 +1,69 @@
 import { useState, useEffect } from 'react'
-import { X } from 'lucide-react'
+import { X, Calendar as CalendarIcon } from 'lucide-react'
+import { format } from 'date-fns'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Calendar } from '@/components/ui/calendar'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover'
+import { cn } from '@/lib/utils'
 import type { Sprint } from '@/types'
+
+// =============================================================================
+// SUB-COMPONENT — DatePickerField
+// =============================================================================
+
+interface DatePickerFieldProps {
+  label:       string
+  value:       string                // yyyy-MM-dd or ''
+  onChange:    (iso: string) => void // empty string when cleared
+  placeholder?: string
+  disabled?:   (date: Date) => boolean
+}
+
+function DatePickerField({ label, value, onChange, placeholder = 'Pick a date', disabled }: DatePickerFieldProps) {
+  // Treat the yyyy-MM-dd value as a local-time date so the calendar doesn't shift
+  // by a day when the user is east of UTC.
+  const selected = value ? new Date(`${value}T00:00:00`) : undefined
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <Label className="text-xs text-muted-foreground">{label}</Label>
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button
+            type="button"
+            variant="outline"
+            className={cn(
+              'h-8 px-2.5 text-sm font-normal justify-start gap-2',
+              !value && 'text-muted-foreground',
+            )}
+          >
+            <CalendarIcon size={14} className="text-muted-foreground" />
+            {value ? format(selected!, 'PP') : placeholder}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0" align="start">
+          <Calendar
+            mode="single"
+            selected={selected}
+            onSelect={(d) => onChange(d ? format(d, 'yyyy-MM-dd') : '')}
+            disabled={disabled}
+            autoFocus
+          />
+        </PopoverContent>
+      </Popover>
+    </div>
+  )
+}
+
+// =============================================================================
+// CREATE SPRINT MODAL
+// =============================================================================
 
 interface CreateSprintModalProps {
   isOpen:   boolean
@@ -101,24 +161,17 @@ export function CreateSprintModal({ isOpen, onClose, onSubmit }: CreateSprintMod
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <div className="flex flex-col gap-1.5">
-              <Label className="text-xs text-muted-foreground">Start date</Label>
-              <Input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="h-8 text-sm"
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label className="text-xs text-muted-foreground">End date</Label>
-              <Input
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="h-8 text-sm"
-              />
-            </div>
+            <DatePickerField
+              label="Start date"
+              value={startDate}
+              onChange={setStartDate}
+            />
+            <DatePickerField
+              label="End date"
+              value={endDate}
+              onChange={setEndDate}
+              disabled={(d) => !!startDate && d < new Date(`${startDate}T00:00:00`)}
+            />
           </div>
 
           {error && <p className="text-xs text-destructive">{error}</p>}
