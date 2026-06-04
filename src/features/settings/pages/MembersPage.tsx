@@ -1,5 +1,15 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
+import {
+  flexRender,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getSortedRowModel,
+  useReactTable,
+  type ColumnDef,
+  type SortingState,
+} from '@tanstack/react-table'
+import { ArrowDown, ArrowUp, ChevronsUpDown, Search } from 'lucide-react'
 import { useAuthStore } from '@/store/useAuthStore'
 import { useMembers } from '@/hooks/useMembers'
 import { Input } from '@/components/ui/input'
@@ -31,6 +41,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { RoleBadge } from '@/components/primitives/RoleBadge'
+import { cn } from '@/lib/utils'
 import type { OrgMember, InviteRole, Invitation } from '@/types'
 
 // =============================================================================
@@ -51,133 +62,6 @@ function SkeletonRow() {
       </TableCell>
       <TableCell><div className="h-5 w-14 rounded-full bg-muted" /></TableCell>
       <TableCell />
-    </TableRow>
-  )
-}
-
-interface MemberRowProps {
-  member:        OrgMember
-  isSelf:        boolean
-  canRemove:     boolean
-  canChangeRole: boolean
-  canTransfer:   boolean
-  slug:          string
-  onUpdateRole:  (slug: string, userId: string, role: InviteRole) => Promise<void>
-  onRemove:      (slug: string, userId: string) => Promise<void>
-  onTransfer:    (slug: string, userId: string) => Promise<void>
-}
-
-function MemberRow({
-  member, isSelf, canRemove, canChangeRole, canTransfer, slug, onUpdateRole, onRemove, onTransfer,
-}: MemberRowProps) {
-  const initials = member.name.slice(0, 2).toUpperCase()
-
-  return (
-    <TableRow>
-      {/* Member cell — avatar + name + email */}
-      <TableCell className="py-3">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="w-8 h-8 rounded-full bg-brand-primary/15 flex items-center justify-center text-[11px] font-semibold text-brand-primary shrink-0 select-none">
-            {initials}
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-foreground truncate">
-              {member.name}
-              {isSelf && <span className="ml-1.5 text-xs text-muted-foreground font-normal">(you)</span>}
-            </p>
-            <p className="text-xs text-muted-foreground truncate">{member.email}</p>
-          </div>
-        </div>
-      </TableCell>
-
-      {/* Role cell — badge or dropdown */}
-      <TableCell>
-        {canChangeRole ? (
-          <Select
-            value={member.role}
-            onValueChange={(v) => void onUpdateRole(slug, member.userId, v as InviteRole)}
-          >
-            <SelectTrigger size="sm" aria-label={`Role for ${member.name}`} className="w-28">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="member">Member</SelectItem>
-              <SelectItem value="admin">Admin</SelectItem>
-              <SelectItem value="viewer">Viewer</SelectItem>
-            </SelectContent>
-          </Select>
-        ) : (
-          <RoleBadge role={member.role} />
-        )}
-      </TableCell>
-
-      {/* Actions cell */}
-      <TableCell className="text-right">
-        <div className="flex items-center justify-end gap-2">
-          {/* Transfer ownership */}
-          {canTransfer && (
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <button
-                  type="button"
-                  aria-label={`Make ${member.name} the owner`}
-                  className="text-xs text-muted-foreground hover:text-foreground hover:underline shrink-0"
-                >
-                  Make owner
-                </button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Transfer ownership to {member.name}?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    You will be demoted to admin and {member.name} will become the
-                    workspace owner. This action cannot be undone by you.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={() => void onTransfer(slug, member.userId)}>
-                    Transfer ownership
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          )}
-
-          {/* Remove button */}
-          {canRemove && (
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <button
-                  type="button"
-                  aria-label={`Remove ${member.name}`}
-                  className="text-xs text-destructive hover:underline shrink-0"
-                >
-                  Remove
-                </button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Remove {member.name}?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    They will lose access to this workspace and every project in it.
-                    You can re-invite them later if needed.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    variant="destructive"
-                    onClick={() => void onRemove(slug, member.userId)}
-                  >
-                    Remove member
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          )}
-        </div>
-      </TableCell>
     </TableRow>
   )
 }
@@ -250,6 +134,15 @@ function InviteSection({ isInviting, hookError, onInvite }: InviteSectionProps) 
 // MEMBERS PAGE
 // =============================================================================
 
+// Composite shape the table understands — adds derived per-row capability
+// flags so the column cells never recompute permissions on render.
+type MemberRow = OrgMember & {
+  isSelf:        boolean
+  canChangeRole: boolean
+  canRemove:     boolean
+  canTransfer:   boolean
+}
+
 export default function MembersPage() {
   const { slug }  = useParams<{ slug: string }>()
   const user      = useAuthStore((s) => s.user)
@@ -260,7 +153,9 @@ export default function MembersPage() {
   } = useMembers(slug ?? '')
 
   const [successInvite, setSuccessInvite] = useState<Invitation | null>(null)
-  const [copied, setCopied] = useState(false)
+  const [copied,        setCopied]        = useState(false)
+  const [filter,        setFilter]        = useState('')
+  const [sorting,       setSorting]       = useState<SortingState>([])
 
   const inviteLink = successInvite ? `${window.location.origin}/invite/${successInvite.token}` : null
 
@@ -287,6 +182,183 @@ export default function MembersPage() {
       setCopied(false)
     }
   }
+
+  // Decorate each member with its per-row capabilities once, so the column
+  // cells stay pure and sort/filter don't re-evaluate permissions.
+  const rowData: MemberRow[] = useMemo(() => {
+    return members.map((m) => {
+      const isSelf       = m.userId === user?.id
+      const isOtherOwner = m.role === 'owner'
+      return {
+        ...m,
+        isSelf,
+        canChangeRole: isOwner   && !isSelf && !isOtherOwner,
+        canRemove:     canManage && !isSelf,
+        canTransfer:   isOwner   && !isSelf && !isOtherOwner,
+      }
+    })
+  }, [members, user?.id, isOwner, canManage])
+
+  const columns = useMemo<ColumnDef<MemberRow>[]>(() => [
+    {
+      id: 'name',
+      accessorKey: 'name',
+      header: 'Name',
+      cell: ({ row }) => {
+        const m = row.original
+        const initials = m.name.slice(0, 2).toUpperCase()
+        return (
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-8 h-8 rounded-full bg-brand-primary/15 flex items-center justify-center text-[11px] font-semibold text-brand-primary shrink-0 select-none">
+              {initials}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-foreground truncate">
+                {m.name}
+                {m.isSelf && <span className="ml-1.5 text-xs text-muted-foreground font-normal">(you)</span>}
+              </p>
+              <p className="text-xs text-muted-foreground truncate">{m.email}</p>
+            </div>
+          </div>
+        )
+      },
+      // Search across name + email from one filter input (used by the
+      // column-level filter; the global filter also searches both).
+      filterFn: (row, _id, value: string) => {
+        const q = value.trim().toLowerCase()
+        if (!q) return true
+        return row.original.name.toLowerCase().includes(q)
+            || row.original.email.toLowerCase().includes(q)
+      },
+      sortingFn: (a, b) => a.original.name.localeCompare(b.original.name),
+    },
+    {
+      id: 'role',
+      accessorKey: 'role',
+      header: 'Role',
+      cell: ({ row }) => {
+        const m = row.original
+        return m.canChangeRole ? (
+          <Select
+            value={m.role}
+            onValueChange={(v) => void handleUpdateRole(slug ?? '', m.userId, v as InviteRole)}
+          >
+            <SelectTrigger size="sm" aria-label={`Role for ${m.name}`} className="w-28">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="member">Member</SelectItem>
+              <SelectItem value="admin">Admin</SelectItem>
+              <SelectItem value="viewer">Viewer</SelectItem>
+            </SelectContent>
+          </Select>
+        ) : (
+          <RoleBadge role={m.role} />
+        )
+      },
+      // Sort by canonical authority (owner > admin > member > viewer)
+      // rather than alphabetic — auditors want the most-privileged users
+      // surfaced first.
+      sortingFn: (a, b) => {
+        const rank: Record<OrgMember['role'], number> = {
+          owner: 0, admin: 1, member: 2, viewer: 3,
+        }
+        return rank[a.original.role] - rank[b.original.role]
+      },
+    },
+    {
+      id: 'actions',
+      header: () => <span className="sr-only">Actions</span>,
+      enableSorting: false,
+      cell: ({ row }) => {
+        const m = row.original
+        return (
+          <div className="flex items-center justify-end gap-2">
+            {/* Transfer ownership — AlertDialog (was window.confirm) */}
+            {m.canTransfer && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label={`Make ${m.name} the owner`}
+                    className="text-xs text-muted-foreground hover:text-foreground hover:underline shrink-0"
+                  >
+                    Make owner
+                  </button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Transfer ownership to {m.name}?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      You will be demoted to admin and {m.name} will become the
+                      workspace owner. This action cannot be undone by you.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={() => void handleTransferOwnership(slug ?? '', m.userId)}>
+                      Transfer ownership
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
+
+            {/* Remove — AlertDialog (was no-confirm) */}
+            {m.canRemove && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label={`Remove ${m.name}`}
+                    className="text-xs text-destructive hover:underline shrink-0"
+                  >
+                    Remove
+                  </button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Remove {m.name}?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      They will lose access to this workspace and every project in it.
+                      You can re-invite them later if needed.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      variant="destructive"
+                      onClick={() => void handleRemoveMember(slug ?? '', m.userId)}
+                    >
+                      Remove member
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
+          </div>
+        )
+      },
+    },
+  ], [handleUpdateRole, handleRemoveMember, handleTransferOwnership, slug])
+
+  const table = useReactTable({
+    data: rowData,
+    columns,
+    state: { globalFilter: filter, sorting },
+    onGlobalFilterChange: setFilter,
+    onSortingChange:      setSorting,
+    globalFilterFn:       (row, _id, value: string) => {
+      const q = value.trim().toLowerCase()
+      if (!q) return true
+      return row.original.name.toLowerCase().includes(q)
+          || row.original.email.toLowerCase().includes(q)
+          || row.original.role.toLowerCase().includes(q)
+    },
+    getCoreRowModel:     getCoreRowModel(),
+    getSortedRowModel:   getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+  })
 
   return (
     <div className="max-w-2xl">
@@ -316,9 +388,23 @@ export default function MembersPage() {
 
       {/* Members list */}
       <section>
-        <h2 className="text-sm font-semibold text-foreground mb-3">
-          Members ({members.length})
-        </h2>
+        <div className="flex items-center justify-between gap-3 mb-3">
+          <h2 className="text-sm font-semibold text-foreground">
+            Members ({members.length}{filter.trim() ? ` · ${table.getFilteredRowModel().rows.length} matching` : ''})
+          </h2>
+
+          <div className="relative max-w-xs flex-1">
+            <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+            <Input
+              type="search"
+              placeholder="Filter members…"
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              aria-label="Filter members"
+              className="h-8 pl-7 text-sm"
+            />
+          </div>
+        </div>
 
         <div className="rounded-md border border-border overflow-hidden">
           {!isLoading && members.length === 0 ? (
@@ -328,13 +414,37 @@ export default function MembersPage() {
           ) : (
             <Table>
               <TableHeader>
-                <TableRow className="bg-muted/30 hover:bg-muted/30">
-                  <TableHead className="h-9 px-4 text-xs font-medium text-muted-foreground">Name</TableHead>
-                  <TableHead className="h-9 px-4 text-xs font-medium text-muted-foreground">Role</TableHead>
-                  <TableHead className="h-9 px-4 text-right">
-                    <span className="sr-only">Actions</span>
-                  </TableHead>
-                </TableRow>
+                {table.getHeaderGroups().map((hg) => (
+                  <TableRow key={hg.id} className="bg-muted/30 hover:bg-muted/30">
+                    {hg.headers.map((header) => {
+                      const canSort  = header.column.getCanSort()
+                      const sortDir  = header.column.getIsSorted()
+                      const SortIcon =
+                        sortDir === 'asc'  ? ArrowUp :
+                        sortDir === 'desc' ? ArrowDown :
+                        ChevronsUpDown
+                      return (
+                        <TableHead
+                          key={header.id}
+                          className="h-9 px-4 text-xs font-medium text-muted-foreground"
+                        >
+                          {canSort ? (
+                            <button
+                              type="button"
+                              onClick={header.column.getToggleSortingHandler()}
+                              className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
+                            >
+                              {flexRender(header.column.columnDef.header, header.getContext())}
+                              <SortIcon size={11} className={cn(!sortDir && 'opacity-40')} />
+                            </button>
+                          ) : (
+                            flexRender(header.column.columnDef.header, header.getContext())
+                          )}
+                        </TableHead>
+                      )
+                    })}
+                  </TableRow>
+                ))}
               </TableHeader>
               <TableBody>
                 {isLoading ? (
@@ -343,25 +453,22 @@ export default function MembersPage() {
                     <SkeletonRow />
                     <SkeletonRow />
                   </>
+                ) : table.getRowModel().rows.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={columns.length} className="text-center text-sm text-muted-foreground py-6">
+                      No members match “{filter}”.
+                    </TableCell>
+                  </TableRow>
                 ) : (
-                  members.map((member) => {
-                    const isSelf       = member.userId === user?.id
-                    const isOtherOwner = member.role === 'owner'
-                    return (
-                      <MemberRow
-                        key={member.id}
-                        member={member}
-                        isSelf={isSelf}
-                        slug={slug ?? ''}
-                        canChangeRole={isOwner && !isSelf && !isOtherOwner}
-                        canRemove={canManage && !isSelf}
-                        canTransfer={isOwner && !isSelf && !isOtherOwner}
-                        onUpdateRole={handleUpdateRole}
-                        onRemove={handleRemoveMember}
-                        onTransfer={handleTransferOwnership}
-                      />
-                    )
-                  })
+                  table.getRowModel().rows.map((row) => (
+                    <TableRow key={row.id}>
+                      {row.getVisibleCells().map((cell) => (
+                        <TableCell key={cell.id} className="py-3 px-4 align-middle">
+                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))
                 )}
               </TableBody>
             </Table>

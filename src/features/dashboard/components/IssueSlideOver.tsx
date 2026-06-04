@@ -6,9 +6,11 @@ import { useParams } from 'react-router-dom'
 import { useIssueDetail } from '@/hooks/useIssueDetail'
 import { useIssueStore } from '@/store/useIssueStore'
 import { useProjectStore } from '@/store/useProjectStore'
+import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
+import { Drawer, DrawerContent, DrawerTitle } from '@/components/ui/drawer'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
 import { ActivityFeed } from './ActivityFeed'
@@ -410,6 +412,7 @@ interface IssueSlideOverProps {
 export function IssueSlideOver({ issueId, isOpen, onClose }: IssueSlideOverProps) {
   const { slug, projectId } = useParams<{ slug: string; projectId: string }>()
   const currentProject      = useProjectStore((s) => s.currentProject)
+  const isDesktop           = useMediaQuery('(min-width: 768px)')
 
   const statuses = useIssueStore((s) => s.statuses)
 
@@ -423,27 +426,193 @@ export function IssueSlideOver({ issueId, isOpen, onClose }: IssueSlideOverProps
     if (isOpen && issueId) void loadIssue(issueId)
   }, [issueId, isOpen]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Escape key
+  // Escape key (desktop only — vaul handles its own dismiss)
   useEffect(() => {
-    if (!isOpen) return
+    if (!isOpen || !isDesktop) return
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
     document.addEventListener('keydown', handler)
     return () => document.removeEventListener('keydown', handler)
-  }, [isOpen, onClose])
+  }, [isOpen, isDesktop, onClose])
 
   const priorityOpt = PRIORITY_OPTIONS.find((p) => p.value === issue?.priority)
 
+  // Header + body — shared between the desktop slide-over and the mobile drawer
+  // shells. Stacks on mobile (flex-col) and uses the original 2:1 split on md+.
+  const headerNode = (
+    <div className="flex items-center gap-3 px-5 py-3 border-b border-border shrink-0">
+      <div className="flex items-center gap-2 mr-auto">
+        <span className="text-xs font-mono text-muted-foreground">
+          {currentProject?.key ?? '…'}-{issue?.number ?? '…'}
+        </span>
+        {issue && (
+          <Badge variant="secondary" className="h-4 px-1.5 text-[10px] rounded text-muted-foreground">
+            {TYPE_LABEL[issue.type as IssueType] ?? issue.type}
+          </Badge>
+        )}
+      </div>
+
+      {issue && (
+        <StatusDropdown
+          statusId={issue.statusId}
+          onSelect={(id) => void handleUpdateStatus(id)}
+        />
+      )}
+
+      {/* Close — desktop only; vaul provides a drag-handle + tap-overlay on mobile */}
+      {isDesktop && (
+        <button
+          type="button"
+          onClick={onClose}
+          className="ml-2 w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+        >
+          <X size={15} />
+        </button>
+      )}
+    </div>
+  )
+
+  const bodyNode = isLoading || !issue ? (
+    <SlideOverSkeleton />
+  ) : (
+    <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
+      {/* Main content */}
+      <div className="flex flex-col gap-6 md:flex-[2] overflow-y-auto px-6 py-5 min-w-0">
+        <InlineTitle
+          value={issue.title}
+          isSaving={isSaving}
+          onSave={(v) => void handleUpdateField('title', v)}
+        />
+
+        <div className="flex flex-col gap-1.5">
+          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Description</span>
+          <InlineDescription
+            value={issue.description}
+            isSaving={isSaving}
+            onSave={(v) => void handleUpdateField('description', v)}
+          />
+        </div>
+
+        <div className="flex flex-col gap-4">
+          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            Activity
+            {(comments.length + history.length) > 0 && (
+              <Badge variant="secondary" className="ml-1.5 h-4 px-1.5 text-[10px]">
+                {comments.length + history.length}
+              </Badge>
+            )}
+          </span>
+
+          <ActivityFeed comments={comments} history={history} statuses={statuses} />
+          <CommentBox onSubmit={(body) => handleAddComment(body)} />
+        </div>
+      </div>
+
+      {/* Metadata column — full-width on mobile, fixed 13rem on desktop */}
+      <div className="flex flex-col gap-5 w-full md:w-52 shrink-0 border-t md:border-t-0 md:border-l border-border overflow-y-auto px-4 py-5 bg-muted/20">
+        <MetaRow label="Assignee">
+          <AssigneeDropdown
+            assigneeId={issue.assigneeId}
+            assignee={issue.assignee}
+            members={members}
+            onSelect={(userId) => void handleUpdateField('assigneeId', userId)}
+          />
+        </MetaRow>
+
+        <MetaRow label="Reporter">
+          <div className="flex items-center gap-2">
+            <Avatar name={issue.reporter.name} url={issue.reporter.avatarUrl} />
+            <span className="text-sm text-foreground truncate">{issue.reporter.name}</span>
+          </div>
+        </MetaRow>
+
+        <MetaRow label="Priority">
+          <select
+            value={issue.priority}
+            onChange={(e) => void handleUpdateField('priority', e.target.value as IssuePriority)}
+            className="h-7 w-full rounded-md border border-input bg-background px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-brand-primary/40 transition-colors"
+          >
+            {PRIORITY_OPTIONS.map((p) => (
+              <option key={p.value} value={p.value}>{p.label}</option>
+            ))}
+          </select>
+          {priorityOpt && (
+            <div className="flex items-center gap-1.5 mt-1">
+              <span className={`w-2 h-2 rounded-full shrink-0 ${priorityOpt.dot}`} />
+              <span className="text-[11px] text-muted-foreground">{priorityOpt.label}</span>
+            </div>
+          )}
+        </MetaRow>
+
+        <MetaRow label="Due date">
+          {(() => {
+            const due = issue.dueDate ? issue.dueDate.slice(0, 10) : ''
+            const selected = due ? new Date(`${due}T00:00:00`) : undefined
+            return (
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className={cn(
+                      'h-7 w-full px-2 text-xs font-normal justify-start gap-2',
+                      !due && 'text-muted-foreground/60 italic',
+                    )}
+                  >
+                    <CalendarIcon size={12} className="text-muted-foreground" />
+                    {due ? format(selected!, 'PP') : 'No due date'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={selected}
+                    onSelect={(d) =>
+                      void handleUpdateField('dueDate', d ? format(d, 'yyyy-MM-dd') : null)
+                    }
+                    autoFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            )
+          })()}
+        </MetaRow>
+
+        <MetaRow label="Created">
+          <span className="text-sm text-muted-foreground">{fmtDate(issue.createdAt)}</span>
+        </MetaRow>
+      </div>
+    </div>
+  )
+
+  // Mobile (<md) — vaul Drawer, bottom-anchored with full-height content.
+  if (!isDesktop) {
+    return (
+      <Drawer open={isOpen} onOpenChange={(open) => { if (!open) onClose() }}>
+        <DrawerContent className="h-[92vh] !max-h-[92vh] p-0">
+          {/* sr-only title satisfies the Dialog/Drawer aria contract without
+              showing a duplicate heading above our own header */}
+          <DrawerTitle className="sr-only">
+            Issue {currentProject?.key ?? ''}-{issue?.number ?? ''}
+          </DrawerTitle>
+          <div className="flex flex-col h-full overflow-hidden">
+            {headerNode}
+            {bodyNode}
+          </div>
+        </DrawerContent>
+      </Drawer>
+    )
+  }
+
+  // Desktop — original side-panel.
   return (
     <AnimatePresence>
       {isOpen && (
         <div className="fixed inset-0 z-40 flex justify-end">
-          {/* Backdrop */}
           <div
             className="absolute inset-0 bg-black/30 backdrop-blur-[2px]"
             onClick={onClose}
           />
 
-          {/* Panel */}
           <motion.div
             initial={{ x: '100%' }}
             animate={{ x: 0 }}
@@ -451,168 +620,8 @@ export function IssueSlideOver({ issueId, isOpen, onClose }: IssueSlideOverProps
             transition={{ type: 'spring', damping: 30, stiffness: 300 }}
             className="relative z-10 flex flex-col w-[62vw] min-w-[580px] max-w-[960px] h-full bg-background border-l border-border shadow-2xl overflow-hidden"
           >
-            {/* ---------------------------------------------------------------- */}
-            {/* Header                                                            */}
-            {/* ---------------------------------------------------------------- */}
-            <div className="flex items-center gap-3 px-5 py-3 border-b border-border shrink-0">
-              {/* Issue ref + type badge */}
-              <div className="flex items-center gap-2 mr-auto">
-                <span className="text-xs font-mono text-muted-foreground">
-                  {currentProject?.key ?? '…'}-{issue?.number ?? '…'}
-                </span>
-                {issue && (
-                  <Badge variant="secondary" className="h-4 px-1.5 text-[10px] rounded text-muted-foreground">
-                    {TYPE_LABEL[issue.type as IssueType] ?? issue.type}
-                  </Badge>
-                )}
-              </div>
-
-              {/* Status dropdown */}
-              {issue && (
-                <StatusDropdown
-                  statusId={issue.statusId}
-                  onSelect={(id) => void handleUpdateStatus(id)}
-                />
-              )}
-
-              {/* Close */}
-              <button
-                type="button"
-                onClick={onClose}
-                className="ml-2 w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-              >
-                <X size={15} />
-              </button>
-            </div>
-
-            {/* ---------------------------------------------------------------- */}
-            {/* Body                                                              */}
-            {/* ---------------------------------------------------------------- */}
-            {isLoading || !issue ? (
-              <SlideOverSkeleton />
-            ) : (
-              <div className="flex flex-1 overflow-hidden">
-                {/* Left panel — main content */}
-                <div className="flex flex-col gap-6 flex-[2] overflow-y-auto px-6 py-5 min-w-0">
-                  {/* Title */}
-                  <InlineTitle
-                    value={issue.title}
-                    isSaving={isSaving}
-                    onSave={(v) => void handleUpdateField('title', v)}
-                  />
-
-                  {/* Description */}
-                  <div className="flex flex-col gap-1.5">
-                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Description</span>
-                    <InlineDescription
-                      value={issue.description}
-                      isSaving={isSaving}
-                      onSave={(v) => void handleUpdateField('description', v)}
-                    />
-                  </div>
-
-                  {/* Activity — comments + history interleaved */}
-                  <div className="flex flex-col gap-4">
-                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                      Activity
-                      {(comments.length + history.length) > 0 && (
-                        <Badge variant="secondary" className="ml-1.5 h-4 px-1.5 text-[10px]">
-                          {comments.length + history.length}
-                        </Badge>
-                      )}
-                    </span>
-
-                    <ActivityFeed
-                      comments={comments}
-                      history={history}
-                      statuses={statuses}
-                    />
-
-                    <CommentBox onSubmit={(body) => handleAddComment(body)} />
-                  </div>
-                </div>
-
-                {/* Right panel — metadata */}
-                <div className="flex flex-col gap-5 w-52 shrink-0 border-l border-border overflow-y-auto px-4 py-5 bg-muted/20">
-                  {/* Assignee */}
-                  <MetaRow label="Assignee">
-                    <AssigneeDropdown
-                      assigneeId={issue.assigneeId}
-                      assignee={issue.assignee}
-                      members={members}
-                      onSelect={(userId) => void handleUpdateField('assigneeId', userId)}
-                    />
-                  </MetaRow>
-
-                  {/* Reporter */}
-                  <MetaRow label="Reporter">
-                    <div className="flex items-center gap-2">
-                      <Avatar name={issue.reporter.name} url={issue.reporter.avatarUrl} />
-                      <span className="text-sm text-foreground truncate">{issue.reporter.name}</span>
-                    </div>
-                  </MetaRow>
-
-                  {/* Priority */}
-                  <MetaRow label="Priority">
-                    <select
-                      value={issue.priority}
-                      onChange={(e) => void handleUpdateField('priority', e.target.value as IssuePriority)}
-                      className="h-7 w-full rounded-md border border-input bg-background px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-brand-primary/40 transition-colors"
-                    >
-                      {PRIORITY_OPTIONS.map((p) => (
-                        <option key={p.value} value={p.value}>{p.label}</option>
-                      ))}
-                    </select>
-                    {priorityOpt && (
-                      <div className="flex items-center gap-1.5 mt-1">
-                        <span className={`w-2 h-2 rounded-full shrink-0 ${priorityOpt.dot}`} />
-                        <span className="text-[11px] text-muted-foreground">{priorityOpt.label}</span>
-                      </div>
-                    )}
-                  </MetaRow>
-
-                  {/* Due date */}
-                  <MetaRow label="Due date">
-                    {(() => {
-                      const due = issue.dueDate ? issue.dueDate.slice(0, 10) : ''
-                      const selected = due ? new Date(`${due}T00:00:00`) : undefined
-                      return (
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              className={cn(
-                                'h-7 w-full px-2 text-xs font-normal justify-start gap-2',
-                                !due && 'text-muted-foreground/60 italic',
-                              )}
-                            >
-                              <CalendarIcon size={12} className="text-muted-foreground" />
-                              {due ? format(selected!, 'PP') : 'No due date'}
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar
-                              mode="single"
-                              selected={selected}
-                              onSelect={(d) =>
-                                void handleUpdateField('dueDate', d ? format(d, 'yyyy-MM-dd') : null)
-                              }
-                              autoFocus
-                            />
-                          </PopoverContent>
-                        </Popover>
-                      )
-                    })()}
-                  </MetaRow>
-
-                  {/* Created */}
-                  <MetaRow label="Created">
-                    <span className="text-sm text-muted-foreground">{fmtDate(issue.createdAt)}</span>
-                  </MetaRow>
-                </div>
-              </div>
-            )}
+            {headerNode}
+            {bodyNode}
           </motion.div>
         </div>
       )}
