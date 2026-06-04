@@ -12,6 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { ChatConfirmActions } from '@/features/dashboard/components/ChatConfirmActions'
 
 // =============================================================================
 // CONSTANTS
@@ -99,6 +100,12 @@ export default function AIAssistantPage() {
   const selectedProject = projects.find((p) => p.id === selectedProjectId)
   const showSuggestions = messages.length === 0 && !isLoading
 
+  // The AI proposes write actions and waits for a yes/no reply. Show quick
+  // replies when the latest assistant turn is awaiting confirmation.
+  const lastMessage = messages.at(-1)
+  const awaitingConfirmation =
+    lastMessage?.role === 'assistant' && lastMessage.status === 'awaiting_confirmation'
+
   return (
     <div className="flex flex-col h-full min-w-0 overflow-hidden">
       {/* ------------------------------------------------------------------ */}
@@ -139,6 +146,26 @@ export default function AIAssistantPage() {
                       <span className="text-[10px] text-muted-foreground">
                         {formatTime(msg.timestamp)}
                       </span>
+                      {msg.status === 'awaiting_confirmation' && (
+                        <Badge variant="secondary" className="h-4 px-1.5 text-[10px]">
+                          Awaiting confirmation
+                        </Badge>
+                      )}
+                      {msg.status === 'cancelled' && (
+                        <Badge variant="outline" className="h-4 px-1.5 text-[10px] text-muted-foreground">
+                          Cancelled
+                        </Badge>
+                      )}
+                      {msg.status === 'quota_exceeded' && (
+                        <Badge variant="destructive" className="h-4 px-1.5 text-[10px]">
+                          Usage limit
+                        </Badge>
+                      )}
+                      {msg.status === 'validation_failed' && (
+                        <Badge variant="outline" className="h-4 px-1.5 text-[10px] text-amber-600 border-amber-300">
+                          Not found
+                        </Badge>
+                      )}
                       {msg.intent && (
                         <Badge variant="outline" className="h-4 px-1.5 text-[10px] font-mono text-muted-foreground">
                           {msg.intent}
@@ -155,6 +182,15 @@ export default function AIAssistantPage() {
                 <div className="rounded-2xl rounded-tl-sm bg-muted/60 border border-border">
                   <LoadingDots />
                 </div>
+              </div>
+            )}
+
+            {awaitingConfirmation && !isLoading && (
+              <div className="flex justify-start pl-1">
+                <ChatConfirmActions
+                  onConfirm={() => void sendMessage('yes')}
+                  onCancel={() => void sendMessage('no')}
+                />
               </div>
             )}
           </>

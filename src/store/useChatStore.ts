@@ -1,10 +1,19 @@
 import { create } from 'zustand'
 
+/** Lifecycle of an assistant turn, mirrored from the AI service /chat status. */
+export type ChatStatus =
+  | 'awaiting_confirmation'
+  | 'executed'
+  | 'cancelled'
+  | 'quota_exceeded'
+  | 'validation_failed'
+
 export interface ChatMessage {
   id:        string
   role:      'user' | 'assistant'
   content:   string
   intent?:   string
+  status?:   ChatStatus
   timestamp: Date
 }
 

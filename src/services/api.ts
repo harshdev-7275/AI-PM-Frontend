@@ -737,6 +737,17 @@ const ChatResponseSchema = z.object({
   intent: z.string().nullable(),
   result: z.object({ message: z.string() }).nullable(),
   error:  z.string().nullable(),
+  // Mirrors the AI service /chat status values. Adding a new value to the
+  // AI service without updating this enum SILENTLY drops the response (Zod
+  // throws) and the user sees an empty chat bubble. Update both sides
+  // together.
+  status: z.enum([
+    'awaiting_confirmation',
+    'executed',
+    'cancelled',
+    'quota_exceeded',
+    'validation_failed',
+  ]).optional(),
 })
 
 export type ChatResponse = z.infer<typeof ChatResponseSchema>

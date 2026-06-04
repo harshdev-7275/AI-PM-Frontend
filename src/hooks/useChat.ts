@@ -25,7 +25,22 @@ export function useChat() {
       if (response.intent) {
         message.intent = response.intent
       }
+      if (response.status) {
+        message.status = response.status
+      }
       addMessage(message)
+    } catch (err) {
+      // The Zod schema in services/api.ts is the AI service's contract. If a
+      // new status value is added on the Python side without updating the
+      // enum, parse() throws and the user would see an empty chat. Surface
+      // a generic error message so the failure is at least visible.
+      // Logged for ops visibility.
+      // eslint-disable-next-line no-console
+      console.error('chat: failed to parse AI response', err)
+      addMessage({
+        role:    'assistant',
+        content: 'Sorry, the AI service returned an unexpected response. Please try again.',
+      })
     } finally {
       setLoading(false)
     }
