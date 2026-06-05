@@ -18,7 +18,7 @@ function makeWrapper() {
 
 const MEMBER: OrgMember = {
   id: 'm1', userId: 'u1', name: 'Ada', email: 'ada@acme.com',
-  avatarUrl: null, role: 'owner', joinedAt: '2026-01-01T00:00:00Z', isActive: true,
+  avatarUrl: null, role: 'owner', joinedAt: '2026-01-01T00:00:00Z',
 }
 
 beforeEach(() => { vi.clearAllMocks() })
