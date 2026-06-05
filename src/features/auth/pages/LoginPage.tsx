@@ -1,34 +1,41 @@
-import { useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Icon } from '@/components/primitives/Icon'
 import AuthLayout from '@/features/auth/components/AuthLayout'
+import { loginSchema, type LoginValues } from '@/features/auth/schemas'
 import { useAuth } from '@/hooks/useAuth'
 
 export default function LoginPage() {
-  const navigate                = useNavigate()
-  const [searchParams]          = useSearchParams()
-  const inviteToken             = searchParams.get('invite')
-  const { login }               = useAuth()
-  const [email, setEmail]       = useState('')
-  const [password, setPassword] = useState('')
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const navigate       = useNavigate()
+  const [searchParams] = useSearchParams()
+  const inviteToken    = searchParams.get('invite')
+  const { login }      = useAuth()
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsSubmitting(true)
+  // Form state via React Hook Form + Zod (FrontendRules §7). RHF owns the field
+  // values and the isSubmitting flag; the server-auth failure is surfaced as a
+  // toast, not a field error, since it isn't tied to one input.
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<LoginValues>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: { email: '', password: '' },
+  })
+
+  const onSubmit = handleSubmit(async ({ email, password }) => {
     try {
       await login(email, password)
       toast.success('Welcome back!')
       navigate(inviteToken ? `/invite/${inviteToken}` : '/dashboard')
     } catch {
       toast.error('Invalid email or password')
-    } finally {
-      setIsSubmitting(false)
     }
-  }
+  })
 
   return (
     <AuthLayout>
@@ -48,22 +55,26 @@ export default function LoginPage() {
         <Divider label="or email" />
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="w-full flex flex-col gap-3">
-          <div className="relative">
-            <Icon
-              name="mail"
-              size={16}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
-            />
-            <Input
-              type="email"
-              placeholder="name@company.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              autoComplete="email"
-              className="pl-10"
-            />
+        <form onSubmit={onSubmit} noValidate className="w-full flex flex-col gap-3">
+          <div className="space-y-1">
+            <div className="relative">
+              <Icon
+                name="mail"
+                size={16}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
+              />
+              <Input
+                type="email"
+                placeholder="name@company.com"
+                autoComplete="email"
+                className="pl-10"
+                aria-invalid={errors.email ? true : undefined}
+                {...register('email')}
+              />
+            </div>
+            {errors.email && (
+              <p className="text-xs text-destructive">{errors.email.message}</p>
+            )}
           </div>
 
           <div className="space-y-1">
@@ -84,13 +95,15 @@ export default function LoginPage() {
               <Input
                 type="password"
                 placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
                 autoComplete="current-password"
                 className="pl-10"
+                aria-invalid={errors.password ? true : undefined}
+                {...register('password')}
               />
             </div>
+            {errors.password && (
+              <p className="text-xs text-destructive">{errors.password.message}</p>
+            )}
           </div>
 
           <Button
