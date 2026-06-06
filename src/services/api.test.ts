@@ -567,6 +567,26 @@ describe('sendChatMessage', () => {
     expect(res.status).toBe('awaiting_confirmation')
   })
 
+  it('parses a needs_input response (missing title)', async () => {
+    /** Regression: the AI service returns status="needs_input" when the
+     *  user wants to create something but didn't include a title. Before
+     *  needs_input was in the Zod schema's status enum, the parse() threw
+     *  and the user saw the generic "unexpected response" error. */
+    server.use(
+      http.post('http://localhost:4000/api/chat', () =>
+        HttpResponse.json({
+          intent: 'CREATE_ISSUE',
+          result: { message: 'What should I title this issue? For example: "create a bug: login button does nothing on mobile".' },
+          status: 'needs_input',
+          error:  null,
+        })
+      )
+    )
+    const res = await sendChatMessage('want to create one issue', 'user-id', 'test-org', 'cccccccc-0000-4000-8000-000000000001')
+    expect(res.status).toBe('needs_input')
+    expect(res.result?.message).toMatch(/What should I title this issue/)
+  })
+
   it('parses a quota_exceeded response', async () => {
     server.use(
       http.post('http://localhost:4000/api/chat', () =>

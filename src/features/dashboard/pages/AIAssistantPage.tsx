@@ -166,6 +166,11 @@ export default function AIAssistantPage() {
                           Not found
                         </Badge>
                       )}
+                      {msg.status === 'needs_input' && (
+                        <Badge variant="outline" className="h-4 px-1.5 text-[10px] text-blue-600 border-blue-300">
+                          Needs more info
+                        </Badge>
+                      )}
                       {msg.intent && (
                         <Badge variant="outline" className="h-4 px-1.5 text-[10px] font-mono text-muted-foreground">
                           {msg.intent}
@@ -266,7 +271,11 @@ export default function AIAssistantPage() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Ask about issues, sprints, members…"
+              placeholder={
+                lastMessage?.status === 'needs_input'
+                  ? 'Reply with the missing info…'
+                  : 'Ask about issues, sprints, members…'
+              }
               className="min-h-[44px] max-h-[120px] resize-none text-sm leading-relaxed"
               rows={1}
               disabled={isLoading || !selectedProjectId}

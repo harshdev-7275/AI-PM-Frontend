@@ -747,6 +747,7 @@ const ChatResponseSchema = z.object({
     'cancelled',
     'quota_exceeded',
     'validation_failed',
+    'needs_input',
   ]).optional(),
 })
 

@@ -7,6 +7,8 @@ export type ChatStatus =
   | 'cancelled'
   | 'quota_exceeded'
   | 'validation_failed'
+  /** AI needs more info from the user to proceed (e.g. a missing issue title). */
+  | 'needs_input'
 
 export interface ChatMessage {
   id:        string
