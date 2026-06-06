@@ -171,6 +171,16 @@ export default function AIAssistantPage() {
                           Needs more info
                         </Badge>
                       )}
+                      {msg.status === 'needs_clarification' && (
+                        <Badge variant="outline" className="h-4 px-1.5 text-[10px] text-blue-600 border-blue-300">
+                          Follow-up
+                        </Badge>
+                      )}
+                      {msg.status === 'error' && (
+                        <Badge variant="destructive" className="h-4 px-1.5 text-[10px]">
+                          Error
+                        </Badge>
+                      )}
                       {msg.intent && (
                         <Badge variant="outline" className="h-4 px-1.5 text-[10px] font-mono text-muted-foreground">
                           {msg.intent}
@@ -272,7 +282,7 @@ export default function AIAssistantPage() {
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder={
-                lastMessage?.status === 'needs_input'
+                lastMessage?.status === 'needs_input' || lastMessage?.status === 'needs_clarification'
                   ? 'Reply with the missing info…'
                   : 'Ask about issues, sprints, members…'
               }

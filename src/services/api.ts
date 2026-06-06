@@ -737,10 +737,13 @@ const ChatResponseSchema = z.object({
   intent: z.string().nullable(),
   result: z.object({ message: z.string() }).nullable(),
   error:  z.string().nullable(),
-  // Mirrors the AI service /chat status values. Adding a new value to the
-  // AI service without updating this enum SILENTLY drops the response (Zod
-  // throws) and the user sees an empty chat bubble. Update both sides
-  // together.
+  // Mirrors the AI service /chat status values — keep this list in sync so
+  // known statuses are typed and get a UI badge (see AIAssistantPage). The
+  // `.catch(undefined)` is the safety net: a status the AI service adds before
+  // this enum is updated degrades to "no badge" instead of throwing away the
+  // whole response (which left the user with a generic "unexpected response"
+  // and no message at all). `result` stays strictly validated — if the core
+  // payload is malformed we genuinely can't render, so that still throws.
   status: z.enum([
     'awaiting_confirmation',
     'executed',
@@ -748,7 +751,13 @@ const ChatResponseSchema = z.object({
     'quota_exceeded',
     'validation_failed',
     'needs_input',
-  ]).optional(),
+    // Read/unknown turn whose reply ended in a question — the supervisor set a
+    // pending clarification so the next message is resolved in context.
+    'needs_clarification',
+    // The LLM call itself raised (e.g. every model tier rate-limited). The
+    // message is a friendly retry, not a stack trace.
+    'error',
+  ]).optional().catch(undefined),
 })
 
 export type ChatResponse = z.infer<typeof ChatResponseSchema>

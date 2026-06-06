@@ -587,6 +587,68 @@ describe('sendChatMessage', () => {
     expect(res.result?.message).toMatch(/What should I title this issue/)
   })
 
+  it('parses a needs_clarification response (read turn ended with a question)', async () => {
+    /** Regression: when an assistant reply ends in a question (e.g. after a
+     *  create, "Want me to assign it to someone?"), the supervisor sets a
+     *  pending clarification and returns status="needs_clarification". Before
+     *  needs_clarification was in the Zod enum, parse() threw and the user saw
+     *  the generic "unexpected response" error instead of the reply. The extra
+     *  tokens_used field the AI service sends must also be tolerated. */
+    server.use(
+      http.post('http://localhost:4000/api/chat', () =>
+        HttpResponse.json({
+          intent: 'QUERY_ISSUES',
+          result: { message: 'Created issue **#26: responsive issue** (task, medium priority).\n\nWant me to assign it to someone or add more details?' },
+          status: 'needs_clarification',
+          error:  null,
+          tokens_used: 3515,
+        })
+      )
+    )
+    const res = await sendChatMessage('create a new issue', 'user-id', 'test-org', 'cccccccc-0000-4000-8000-000000000001')
+    expect(res.status).toBe('needs_clarification')
+    expect(res.result?.message).toMatch(/Want me to assign it/)
+  })
+
+  it('parses an error response (classify crashed / all models rate-limited)', async () => {
+    /** The supervisor returns status="error" when the LLM call itself raises
+     *  (e.g. every model tier is rate-limited). It still carries a friendly
+     *  message; the frontend must show it, not the generic parse fallback. */
+    server.use(
+      http.post('http://localhost:4000/api/chat', () =>
+        HttpResponse.json({
+          intent: null,
+          result: { message: 'I had trouble reaching the AI service. Please try again in a moment.' },
+          status: 'error',
+          error:  null,
+        })
+      )
+    )
+    const res = await sendChatMessage('responsive issuje', 'user-id', 'test-org', 'cccccccc-0000-4000-8000-000000000001')
+    expect(res.status).toBe('error')
+    expect(res.result?.message).toMatch(/trouble reaching/)
+  })
+
+  it('tolerates an unknown future status — still surfaces the message', async () => {
+    /** Safety net: if the AI service ships a new status before this enum is
+     *  updated, the response must NOT be discarded. The status degrades to
+     *  undefined (no badge) but result.message still renders — the failure that
+     *  showed the user a generic "unexpected response" with no content. */
+    server.use(
+      http.post('http://localhost:4000/api/chat', () =>
+        HttpResponse.json({
+          intent: 'CREATE_ISSUE',
+          result: { message: 'A brand new lifecycle state the frontend has not seen yet.' },
+          status: 'some_future_status',
+          error:  null,
+        })
+      )
+    )
+    const res = await sendChatMessage('do a new thing', 'user-id', 'test-org', 'cccccccc-0000-4000-8000-000000000001')
+    expect(res.status).toBeUndefined()
+    expect(res.result?.message).toMatch(/brand new lifecycle state/)
+  })
+
   it('parses a quota_exceeded response', async () => {
     server.use(
       http.post('http://localhost:4000/api/chat', () =>

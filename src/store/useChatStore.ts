@@ -9,6 +9,10 @@ export type ChatStatus =
   | 'validation_failed'
   /** AI needs more info from the user to proceed (e.g. a missing issue title). */
   | 'needs_input'
+  /** Reply ended in a question; a pending clarification resolves the next turn. */
+  | 'needs_clarification'
+  /** The LLM call raised (e.g. all model tiers rate-limited); message is a retry. */
+  | 'error'
 
 export interface ChatMessage {
   id:        string
