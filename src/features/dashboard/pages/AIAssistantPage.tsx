@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { ChatConfirmActions } from '@/features/dashboard/components/ChatConfirmActions'
+import { BlockRenderer } from '@/components/blocks/renderBlocks'
 
 // =============================================================================
 // CONSTANTS
@@ -28,6 +29,12 @@ const SUGGESTED = [
 function formatTime(date: Date): string {
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 }
+
+// Shared assistant bubble styling — used for both the markdown fallback and
+// the render-contract blocks so a text reply and a structured reply sit in an
+// identical surface.
+const ASSISTANT_BUBBLE =
+  'px-4 py-3 rounded-2xl rounded-tl-sm bg-muted/60 border border-border text-sm leading-relaxed text-foreground'
 
 // =============================================================================
 // LOADING DOTS
@@ -139,9 +146,15 @@ export default function AIAssistantPage() {
                 ) : (
                   // Assistant card — left, surface
                   <div className="max-w-[70%] flex flex-col items-start gap-1">
-                    <div className="px-4 py-3 rounded-2xl rounded-tl-sm bg-muted/60 border border-border text-sm leading-relaxed text-foreground whitespace-pre-wrap">
-                      {msg.content}
-                    </div>
+                    {msg.blocks && msg.blocks.length > 0 ? (
+                      <div className={ASSISTANT_BUBBLE}>
+                        <BlockRenderer blocks={msg.blocks} />
+                      </div>
+                    ) : (
+                      <div className={`${ASSISTANT_BUBBLE} whitespace-pre-wrap`}>
+                        {msg.content}
+                      </div>
+                    )}
                     <div className="flex items-center gap-2 px-1">
                       <span className="text-[10px] text-muted-foreground">
                         {formatTime(msg.timestamp)}
