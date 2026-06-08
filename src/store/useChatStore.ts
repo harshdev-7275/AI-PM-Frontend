@@ -1,5 +1,7 @@
 import { create } from 'zustand'
 
+import type { Block } from '@/types/renderBlocks'
+
 /** Lifecycle of an assistant turn, mirrored from the AI service /chat status. */
 export type ChatStatus =
   | 'awaiting_confirmation'
@@ -20,6 +22,8 @@ export interface ChatMessage {
   content:   string
   intent?:   string
   status?:   ChatStatus
+  /** Render-contract blocks for the assistant reply; absent → render content as markdown. */
+  blocks?:   Block[]
   timestamp: Date
 }
 

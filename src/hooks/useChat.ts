@@ -2,6 +2,7 @@ import { useAuthStore } from '@/store/useAuthStore'
 import { useOrgStore } from '@/store/useOrgStore'
 import { useChatStore, type ChatMessage } from '@/store/useChatStore'
 import { sendChatMessage } from '@/services/api'
+import { parseBlocks } from '@/types/renderBlocks'
 
 export function useChat() {
   const { messages, isLoading, currentProjectId, addMessage, setLoading, setProjectId, clearMessages } =
@@ -18,6 +19,7 @@ export function useChat() {
 
     try {
       const response = await sendChatMessage(text, user.id, currentOrg.slug, currentProjectId)
+      const blocks = parseBlocks(response.result?.blocks)
       const message: Omit<ChatMessage, 'id' | 'timestamp'> = {
         role:    'assistant',
         content: response.result?.message ?? response.error ?? 'No response',
@@ -27,6 +29,9 @@ export function useChat() {
       }
       if (response.status) {
         message.status = response.status
+      }
+      if (blocks.length > 0) {
+        message.blocks = blocks
       }
       addMessage(message)
     } catch (err) {

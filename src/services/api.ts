@@ -735,7 +735,14 @@ export const removeIssueFromSprint = async (
 
 const ChatResponseSchema = z.object({
   intent: z.string().nullable(),
-  result: z.object({ message: z.string() }).nullable(),
+  result: z.object({
+    message: z.string(),
+    // Render-contract blocks (camelCase; mirror of the AI service). Kept
+    // permissive here — each block is validated and dropped individually by
+    // parseBlocks (types/renderBlocks) at use time, so one malformed block
+    // never fails the whole chat response.
+    blocks: z.array(z.unknown()).optional().catch(undefined),
+  }).nullable(),
   error:  z.string().nullable(),
   // Mirrors the AI service /chat status values — keep this list in sync so
   // known statuses are typed and get a UI badge (see AIAssistantPage). The
