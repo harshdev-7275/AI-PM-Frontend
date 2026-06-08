@@ -4,7 +4,6 @@ import { useProjectStore } from '@/store/useProjectStore'
 import { useChat } from '@/hooks/useChat'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { Badge } from '@/components/ui/badge'
 import {
   Select,
   SelectContent,
@@ -14,6 +13,8 @@ import {
 } from '@/components/ui/select'
 import { ChatConfirmActions } from '@/features/dashboard/components/ChatConfirmActions'
 import { BlockRenderer } from '@/components/blocks/renderBlocks'
+import { MarkdownContent } from '@/components/primitives/MarkdownContent'
+import { StatusPill } from '@/components/primitives/StatusPill'
 
 // =============================================================================
 // CONSTANTS
@@ -151,54 +152,13 @@ export default function AIAssistantPage() {
                         <BlockRenderer blocks={msg.blocks} />
                       </div>
                     ) : (
-                      <div className={`${ASSISTANT_BUBBLE} whitespace-pre-wrap`}>
-                        {msg.content}
-                      </div>
+                      <MarkdownContent content={msg.content} className={ASSISTANT_BUBBLE} />
                     )}
                     <div className="flex items-center gap-2 px-1">
                       <span className="text-[10px] text-muted-foreground">
                         {formatTime(msg.timestamp)}
                       </span>
-                      {msg.status === 'awaiting_confirmation' && (
-                        <Badge variant="secondary" className="h-4 px-1.5 text-[10px]">
-                          Awaiting confirmation
-                        </Badge>
-                      )}
-                      {msg.status === 'cancelled' && (
-                        <Badge variant="outline" className="h-4 px-1.5 text-[10px] text-muted-foreground">
-                          Cancelled
-                        </Badge>
-                      )}
-                      {msg.status === 'quota_exceeded' && (
-                        <Badge variant="destructive" className="h-4 px-1.5 text-[10px]">
-                          Usage limit
-                        </Badge>
-                      )}
-                      {msg.status === 'validation_failed' && (
-                        <Badge variant="outline" className="h-4 px-1.5 text-[10px] text-amber-600 border-amber-300">
-                          Not found
-                        </Badge>
-                      )}
-                      {msg.status === 'needs_input' && (
-                        <Badge variant="outline" className="h-4 px-1.5 text-[10px] text-blue-600 border-blue-300">
-                          Needs more info
-                        </Badge>
-                      )}
-                      {msg.status === 'needs_clarification' && (
-                        <Badge variant="outline" className="h-4 px-1.5 text-[10px] text-blue-600 border-blue-300">
-                          Follow-up
-                        </Badge>
-                      )}
-                      {msg.status === 'error' && (
-                        <Badge variant="destructive" className="h-4 px-1.5 text-[10px]">
-                          Error
-                        </Badge>
-                      )}
-                      {msg.intent && (
-                        <Badge variant="outline" className="h-4 px-1.5 text-[10px] font-mono text-muted-foreground">
-                          {msg.intent}
-                        </Badge>
-                      )}
+                      <StatusPill status={msg.status} intent={msg.intent} />
                     </div>
                   </div>
                 )}
