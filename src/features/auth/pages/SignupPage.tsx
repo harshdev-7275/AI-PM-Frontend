@@ -202,11 +202,12 @@ function Step1({ name, email, password, onChange, onNext }: Omit<Step1Props, 'er
 // ─── Step 2: Your Role ────────────────────────────────────────────────────────
 
 interface Step2Props {
-  onRoleSelect: (role: string) => void
-  onBack:       () => void
+  onRoleSelect:  (role: string) => void
+  onBack:        () => void
+  isSubmitting?: boolean
 }
 
-function Step2({ onRoleSelect, onBack }: Step2Props) {
+function Step2({ onRoleSelect, onBack, isSubmitting }: Step2Props) {
   return (
     <div className="w-full max-w-sm flex flex-col items-center gap-3">
       <motion.div variants={containerVariants} initial="hidden" animate="visible">
@@ -218,10 +219,10 @@ function Step2({ onRoleSelect, onBack }: Step2Props) {
           <ToggleGroup
             type="single"
             value=""
-            onValueChange={(v) => { if (v) onRoleSelect(v) }}
+            onValueChange={(v) => { if (v && !isSubmitting) onRoleSelect(v) }}
             spacing={2}
             aria-label="Role"
-            className="w-full grid grid-cols-2 gap-2"
+            className={`w-full grid grid-cols-2 gap-2 ${isSubmitting ? 'opacity-50 pointer-events-none' : ''}`}
           >
             {ROLES.map((role) => (
               <ToggleGroupItem
@@ -417,8 +418,24 @@ export default function SignupPage() {
     setCurrentStep(2)
   }
 
-  const handleRoleSelect = (role: string) => {
-    setForm((prev) => ({ ...prev, jobTitle: ROLE_TO_JOB_TITLE[role] ?? role.toLowerCase() }))
+  const handleRoleSelect = async (role: string) => {
+    const jobTitle = ROLE_TO_JOB_TITLE[role] ?? role.toLowerCase()
+    setForm((prev) => ({ ...prev, jobTitle }))
+
+    if (inviteToken) {
+      setIsSubmitting(true)
+      try {
+        await register(form.name, form.email, form.password, jobTitle)
+        toast.success('Account created!')
+        navigate(`/invite/${inviteToken}`)
+      } catch {
+        toast.error('Something went wrong. Please try again.')
+      } finally {
+        setIsSubmitting(false)
+      }
+      return
+    }
+
     setCurrentStep(3)
   }
 
@@ -426,15 +443,10 @@ export default function SignupPage() {
     e.preventDefault()
     setIsSubmitting(true)
     try {
-      // Step 1 — create user account, stores token in auth store
       await register(form.name, form.email, form.password, form.jobTitle)
-
-      // Step 2 — create org using the token now in the auth store
       const org = await createOrg(orgName, orgSlug)
-
-      // Step 3 — if an invite is pending, complete the flow; otherwise go to the new org
       toast.success('Workspace created successfully!')
-      navigate(inviteToken ? `/invite/${inviteToken}` : `/${org.slug}/dashboard`)
+      navigate(`/${org.slug}/dashboard`)
     } catch {
       toast.error('Something went wrong. Please try again.')
     } finally {
@@ -458,6 +470,7 @@ export default function SignupPage() {
           <Step2
             onRoleSelect={handleRoleSelect}
             onBack={() => setCurrentStep(1)}
+            isSubmitting={isSubmitting}
           />
         )}
         {currentStep === 3 && (

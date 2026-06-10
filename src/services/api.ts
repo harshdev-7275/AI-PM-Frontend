@@ -4,7 +4,7 @@ import { z } from 'zod'
 import { env } from '@/lib/env'
 import { useAuthStore } from '@/store/useAuthStore'
 import type {
-  AuthResponse, User, Org, Project, Issue, IssueStatus, WorkflowStatus,
+  AuthResponse, User, Org, Project, Category, Issue, IssueStatus, WorkflowStatus,
   CreateIssueInput, UpdateIssueInput,
   IssueDetail, Comment, IssueHistoryEntry,
   OrgMember, OrgMemberRole, InviteRole, Invitation, ProjectMember, ProjectRole, Sprint,
@@ -60,21 +60,29 @@ const LogoutResponseSchema = z.object({
 })
 
 const ProjectSchema = z.object({
-  id:                z.string().uuid(),
-  orgId:             z.string().uuid(),
-  name:              z.string(),
-  key:               z.string(),
-  description:       z.string().nullable(),
-  icon:              z.string().nullable(),
-  color:             z.string().nullable(),
-  isArchived:        z.boolean(),
-  createdBy:         z.string().uuid(),
-  createdAt:         z.string(),
-  cadenceType:       z.enum(['none', 'weekly', 'biweekly', 'monthly']).default('none'),
-  cadenceStartDay:   z.number().nullable().default(null),
-  cadenceDuration:   z.number().nullable().default(null),
-  cadenceAutoCreate: z.boolean().default(false),
-  cadenceNaming:     z.string().nullable().default(null),
+  id:               z.string().uuid(),
+  orgId:            z.string().uuid(),
+  name:             z.string(),
+  key:              z.string(),
+  description:      z.string().nullable(),
+  icon:             z.string().nullable(),
+  color:            z.string().nullable(),
+  isArchived:       z.boolean(),
+  createdBy:        z.string().uuid(),
+  createdAt:        z.string(),
+  weeklyAutoCreate: z.boolean().default(false),
+})
+
+const CategorySchema = z.object({
+  id:          z.string().uuid(),
+  projectId:   z.string().uuid(),
+  orgId:       z.string().uuid(),
+  name:        z.string(),
+  color:       z.string(),
+  description: z.string().nullable(),
+  sprintId:    z.string().uuid().nullable(),
+  createdBy:   z.string().uuid(),
+  createdAt:   z.string(),
 })
 
 const OrgSchema = z.object({
@@ -158,7 +166,7 @@ const IssueHistoryEntrySchema = z.object({
   }),
 })
 
-const IssueTypeSchema = z.enum(['epic', 'story', 'task', 'bug', 'feature', 'subtask'])
+const IssueTypeSchema = z.enum(['feature', 'bug', 'task', 'subtask'])
 const IssuePrioritySchema = z.enum(['critical', 'high', 'medium', 'low'])
 
 const IssueSchema = z.object({
@@ -169,6 +177,7 @@ const IssueSchema = z.object({
   title:          z.string(),
   description:    z.string().nullable(),
   type:           IssueTypeSchema,
+  categoryId:     z.string().uuid(),
   priority:       IssuePrioritySchema,
   statusId:       z.string().uuid(),
   assigneeId:     z.string().uuid().nullable(),
@@ -417,11 +426,12 @@ export const createProject = async (
 }
 
 export interface UpdateProjectInput {
-  cadenceType?:       Project['cadenceType']
-  cadenceStartDay?:   number | null
-  cadenceDuration?:   number | null
-  cadenceAutoCreate?: boolean
-  cadenceNaming?:     string | null
+  name?:             string
+  description?:      string
+  icon?:             string
+  color?:            string
+  isArchived?:       boolean
+  weeklyAutoCreate?: boolean
 }
 
 export const updateProject = async (
@@ -711,71 +721,68 @@ export const completeSprint = async (
   return CompleteSprintResultSchema.parse(res.data)
 }
 
-export const addIssueToSprint = async (
-  slug:      string,
-  projectId: string,
-  sprintId:  string,
-  issueId:   string,
-): Promise<void> => {
-  await api.post(`/orgs/${slug}/projects/${projectId}/sprints/${sprintId}/issues/${issueId}`)
-}
-
-export const removeIssueFromSprint = async (
-  slug:      string,
-  projectId: string,
-  sprintId:  string,
-  issueId:   string,
-): Promise<void> => {
-  await api.delete(`/orgs/${slug}/projects/${projectId}/sprints/${sprintId}/issues/${issueId}`)
-}
 
 // =============================================================================
-// AI SERVICE — proxied through Node.js (secret never reaches the browser)
+// CATEGORIES
 // =============================================================================
 
-const ChatResponseSchema = z.object({
-  intent: z.string().nullable(),
-  result: z.object({
-    message: z.string(),
-    // Render-contract blocks (camelCase; mirror of the AI service). Kept
-    // permissive here — each block is validated and dropped individually by
-    // parseBlocks (types/renderBlocks) at use time, so one malformed block
-    // never fails the whole chat response.
-    blocks: z.array(z.unknown()).optional().catch(undefined),
-  }).nullable(),
-  error:  z.string().nullable(),
-  // Mirrors the AI service /chat status values — keep this list in sync so
-  // known statuses are typed and get a UI badge (see AIAssistantPage). The
-  // `.catch(undefined)` is the safety net: a status the AI service adds before
-  // this enum is updated degrades to "no badge" instead of throwing away the
-  // whole response (which left the user with a generic "unexpected response"
-  // and no message at all). `result` stays strictly validated — if the core
-  // payload is malformed we genuinely can't render, so that still throws.
-  status: z.enum([
-    'awaiting_confirmation',
-    'executed',
-    'cancelled',
-    'quota_exceeded',
-    'validation_failed',
-    'needs_input',
-    // Read/unknown turn whose reply ended in a question — the supervisor set a
-    // pending clarification so the next message is resolved in context.
-    'needs_clarification',
-    // The LLM call itself raised (e.g. every model tier rate-limited). The
-    // message is a friendly retry, not a stack trace.
-    'error',
-  ]).optional().catch(undefined),
-})
-
-export type ChatResponse = z.infer<typeof ChatResponseSchema>
-
-export const sendChatMessage = async (
-  message:   string,
-  _userId:   string,
-  orgSlug:   string,
+export const getCategories = async (
+  slug:      string,
   projectId: string,
-): Promise<ChatResponse> => {
-  const res = await api.post('/api/chat', { message, orgSlug, projectId }, { timeout: 60_000 })
-  return ChatResponseSchema.parse(res.data)
+): Promise<Category[]> => {
+  const res = await api.get(`/orgs/${slug}/projects/${projectId}/categories`)
+  return z.array(CategorySchema).parse(res.data)
 }
 
+export const createCategory = async (
+  slug:        string,
+  projectId:   string,
+  name:        string,
+  color?:      string,
+  description?: string,
+): Promise<Category> => {
+  const res = await api.post(`/orgs/${slug}/projects/${projectId}/categories`, { name, color, description })
+  return CategorySchema.parse(res.data)
+}
+
+export const updateCategory = async (
+  slug:        string,
+  projectId:   string,
+  categoryId:  string,
+  input:       { name?: string; color?: string; description?: string | null },
+): Promise<Category> => {
+  const res = await api.patch(`/orgs/${slug}/projects/${projectId}/categories/${categoryId}`, input)
+  return CategorySchema.parse(res.data)
+}
+
+export const deleteCategory = async (
+  slug:       string,
+  projectId:  string,
+  categoryId: string,
+): Promise<void> => {
+  await api.delete(`/orgs/${slug}/projects/${projectId}/categories/${categoryId}`)
+}
+
+export const assignCategoryToSprint = async (
+  slug:       string,
+  projectId:  string,
+  categoryId: string,
+  sprintId:   string,
+): Promise<Category> => {
+  const res = await api.post(
+    `/orgs/${slug}/projects/${projectId}/categories/${categoryId}/assign-sprint`,
+    { sprintId },
+  )
+  return CategorySchema.parse(res.data)
+}
+
+export const unassignCategoryFromSprint = async (
+  slug:       string,
+  projectId:  string,
+  categoryId: string,
+): Promise<Category> => {
+  const res = await api.delete(
+    `/orgs/${slug}/projects/${projectId}/categories/${categoryId}/assign-sprint`,
+  )
+  return CategorySchema.parse(res.data)
+}

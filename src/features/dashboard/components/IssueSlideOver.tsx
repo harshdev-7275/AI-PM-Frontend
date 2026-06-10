@@ -14,7 +14,7 @@ import { Drawer, DrawerContent, DrawerTitle } from '@/components/ui/drawer'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
 import { ActivityFeed } from './ActivityFeed'
-import type { IssuePriority, IssueType, ProjectMember } from '@/types'
+import type { Category, IssuePriority, IssueType, ProjectMember } from '@/types'
 
 // =============================================================================
 // CONSTANTS
@@ -28,8 +28,7 @@ const PRIORITY_OPTIONS: { value: IssuePriority; label: string; dot: string }[] =
 ]
 
 const TYPE_LABEL: Record<IssueType, string> = {
-  epic: 'Epic', story: 'Story', task: 'Task',
-  bug: 'Bug', feature: 'Feature', subtask: 'Subtask',
+  task: 'Task', bug: 'Bug', feature: 'Feature', subtask: 'Subtask',
 }
 
 // =============================================================================
@@ -239,7 +238,13 @@ function InlineTitle({
   const [draft,   setDraft]   = useState(value)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  useEffect(() => { setDraft(value) }, [value])
+  // Re-seed the draft when the saved value changes (render-time adjustment)
+  const [prevValue, setPrevValue] = useState(value)
+  if (value !== prevValue) {
+    setPrevValue(value)
+    setDraft(value)
+  }
+
   useEffect(() => { if (editing) inputRef.current?.focus() }, [editing])
 
   const commit = () => {
@@ -288,7 +293,13 @@ function InlineDescription({
   const [draft,   setDraft]   = useState(value ?? '')
   const ref = useRef<HTMLTextAreaElement>(null)
 
-  useEffect(() => { setDraft(value ?? '') }, [value])
+  // Re-seed the draft when the saved value changes (render-time adjustment)
+  const [prevValue, setPrevValue] = useState(value)
+  if (value !== prevValue) {
+    setPrevValue(value)
+    setDraft(value ?? '')
+  }
+
   useEffect(() => { if (editing && ref.current) { ref.current.focus(); ref.current.selectionStart = ref.current.value.length } }, [editing])
 
   const commit = () => {
@@ -404,12 +415,13 @@ function SlideOverSkeleton() {
 // =============================================================================
 
 interface IssueSlideOverProps {
-  issueId:   string
-  isOpen:    boolean
-  onClose:   () => void
+  issueId:     string
+  isOpen:      boolean
+  onClose:     () => void
+  categories?: Category[]
 }
 
-export function IssueSlideOver({ issueId, isOpen, onClose }: IssueSlideOverProps) {
+export function IssueSlideOver({ issueId, isOpen, onClose, categories }: IssueSlideOverProps) {
   const { slug, projectId } = useParams<{ slug: string; projectId: string }>()
   const currentProject      = useProjectStore((s) => s.currentProject)
   const isDesktop           = useMediaQuery('(min-width: 768px)')
@@ -524,6 +536,41 @@ export function IssueSlideOver({ issueId, isOpen, onClose }: IssueSlideOverProps
             <span className="text-sm text-foreground truncate">{issue.reporter.name}</span>
           </div>
         </MetaRow>
+
+        <MetaRow label="Type">
+          <select
+            value={issue.type}
+            onChange={(e) => void handleUpdateField('type', e.target.value as IssueType)}
+            className="h-7 w-full rounded-md border border-input bg-background px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-brand-primary/40 transition-colors"
+          >
+            {(Object.keys(TYPE_LABEL) as IssueType[]).map((t) => (
+              <option key={t} value={t}>{TYPE_LABEL[t]}</option>
+            ))}
+          </select>
+        </MetaRow>
+
+        {categories && categories.length > 0 && (
+          <MetaRow label="Category">
+            <select
+              value={issue.categoryId}
+              onChange={(e) => void handleUpdateField('categoryId', e.target.value)}
+              className="h-7 w-full rounded-md border border-input bg-background px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-brand-primary/40 transition-colors"
+            >
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+            {(() => {
+              const cat = categories.find((c) => c.id === issue.categoryId)
+              return cat ? (
+                <div className="flex items-center gap-1.5 mt-1">
+                  <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: cat.color }} />
+                  <span className="text-[11px] text-muted-foreground">{cat.name}</span>
+                </div>
+              ) : null
+            })()}
+          </MetaRow>
+        )}
 
         <MetaRow label="Priority">
           <select

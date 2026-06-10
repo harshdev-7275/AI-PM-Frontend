@@ -92,10 +92,13 @@ export default function DashboardLayout() {
   useEffect(() => {
     if (slug && projects.length === 0) {
       void loadProjects(slug).finally(() => setIsInitialLoading(false))
-    } else if (projects.length > 0) {
-      setIsInitialLoading(false)
     }
   }, [slug]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Once projects exist the initial load is over (render-time adjustment)
+  if (projects.length > 0 && isInitialLoading) {
+    setIsInitialLoading(false)
+  }
 
   // Show skeleton if still loading initially OR data is still being fetched
   const shouldShowSkeleton = isInitialLoading || (projects.length === 0 && isLoading)

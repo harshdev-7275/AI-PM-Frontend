@@ -80,16 +80,26 @@ function useStatusDistribution(statuses: IssueStatus[], issues: Issue[]) {
 // ANALYTICS PAGE
 // =============================================================================
 
+// STATCARD — small reused tile (module level so it isn't re-created per render)
+function Stat({ label, value }: { label: string; value: number | string }) {
+  return (
+    <Card className="p-4">
+      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className="mt-1 text-2xl font-semibold text-foreground tabular-nums">{value}</p>
+    </Card>
+  )
+}
+
 export default function AnalyticsPage() {
   const { slug } = useParams<{ slug: string }>()
   const projects = useProjectStore((s) => s.projects)
 
   const [projectId, setProjectId] = useState<string>('')
 
-  // Default to the first project once they load.
-  useEffect(() => {
-    if (!projectId && projects.length > 0) setProjectId(projects[0]!.id)
-  }, [projects, projectId])
+  // Default to the first project once they load (render-time adjustment)
+  if (!projectId && projects.length > 0) {
+    setProjectId(projects[0]!.id)
+  }
 
   const { sprints, allIssues, statuses, isLoading, loadBacklog } = useBacklog(
     slug ?? '',
@@ -114,14 +124,6 @@ export default function AnalyticsPage() {
   )
 
   const currentProject = projects.find((p) => p.id === projectId)
-
-  // STATCARD — small reused tile
-  const Stat = ({ label, value }: { label: string; value: number | string }) => (
-    <Card className="p-4">
-      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
-      <p className="mt-1 text-2xl font-semibold text-foreground tabular-nums">{value}</p>
-    </Card>
-  )
 
   return (
     <div className="flex flex-col gap-6 px-6 py-6 max-w-6xl">

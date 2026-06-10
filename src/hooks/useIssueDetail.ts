@@ -45,7 +45,7 @@ export function useIssueDetail(slug: string, projectId: string) {
     } finally {
       setIsLoading(false)
     }
-  }, [slug, projectId]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [slug, projectId])  
 
   // ---------------------------------------------------------------------------
   // handleUpdateField — patches a single field, merges result into local state
@@ -64,7 +64,7 @@ export function useIssueDetail(slug: string, projectId: string) {
     } finally {
       setIsSaving(false)
     }
-  }, [slug, projectId, issue, patchIssueInStore]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [slug, projectId, issue, patchIssueInStore])  
 
   // ---------------------------------------------------------------------------
   // handleUpdateStatus — updates statusId + joined status object in memory
@@ -85,7 +85,7 @@ export function useIssueDetail(slug: string, projectId: string) {
     } finally {
       setIsSaving(false)
     }
-  }, [slug, projectId, issue, statuses, updateIssueInStore]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [slug, projectId, issue, statuses, updateIssueInStore])  
 
   // ---------------------------------------------------------------------------
   // Comments
@@ -95,19 +95,19 @@ export function useIssueDetail(slug: string, projectId: string) {
     if (!issue) return
     const comment = await createCommentApi(slug, projectId, issue.id, body)
     setComments((prev) => [...prev, comment])
-  }, [slug, projectId, issue]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [slug, projectId, issue])  
 
   const handleUpdateComment = useCallback(async (commentId: string, body: string): Promise<void> => {
     if (!issue) return
     const updated = await updateCommentApi(slug, projectId, issue.id, commentId, body)
     setComments((prev) => prev.map((c) => c.id === commentId ? updated : c))
-  }, [slug, projectId, issue]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [slug, projectId, issue])  
 
   const handleDeleteComment = useCallback(async (commentId: string): Promise<void> => {
     if (!issue) return
     await deleteCommentApi(slug, projectId, issue.id, commentId)
     setComments((prev) => prev.filter((c) => c.id !== commentId))
-  }, [slug, projectId, issue]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [slug, projectId, issue])  
 
   // ---------------------------------------------------------------------------
 

@@ -79,7 +79,11 @@ export function CreateSprintModal({ isOpen, onClose, onSubmit }: CreateSprintMod
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error,        setError]        = useState<string | null>(null)
 
-  useEffect(() => {
+  // Reset the form when the modal closes (render-time adjustment — see
+  // React docs "Adjusting state when a prop changes")
+  const [wasOpen, setWasOpen] = useState(isOpen)
+  if (isOpen !== wasOpen) {
+    setWasOpen(isOpen)
     if (!isOpen) {
       setName('')
       setGoal('')
@@ -88,7 +92,7 @@ export function CreateSprintModal({ isOpen, onClose, onSubmit }: CreateSprintMod
       setError(null)
       setIsSubmitting(false)
     }
-  }, [isOpen])
+  }
 
   useEffect(() => {
     if (!isOpen) return

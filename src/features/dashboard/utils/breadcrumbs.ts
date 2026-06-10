@@ -9,7 +9,6 @@ const SECTION_LABELS: Record<string, string> = {
   dashboard:      'Boards',
   issues:         'Issues',
   sprints:        'Sprints',
-  'ai-assistant': 'AI Assistant',
   analytics:      'Analytics',
   settings:       'Settings',
 }

@@ -22,11 +22,7 @@ function makeProject(overrides: Partial<Project>): Project {
     isArchived: false,
     createdBy: 'u1',
     createdAt: '2026-01-01T00:00:00.000Z',
-    cadenceType: 'sprint',
-    cadenceStartDay: null,
-    cadenceDuration: null,
-    cadenceAutoCreate: false,
-    cadenceNaming: null,
+    weeklyAutoCreate: false,
     ...overrides,
   } as Project
 }

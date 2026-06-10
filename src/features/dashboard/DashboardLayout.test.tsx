@@ -119,7 +119,6 @@ describe('DashboardLayout (shadcn Sidebar)', () => {
     expect(within(sidebar as HTMLElement).getByText('Boards')).toBeInTheDocument()
     expect(within(sidebar as HTMLElement).getByText('Issues')).toBeInTheDocument()
     expect(within(sidebar as HTMLElement).getByText('Sprints')).toBeInTheDocument()
-    expect(within(sidebar as HTMLElement).getByText('AI Assistant')).toBeInTheDocument()
     expect(within(sidebar as HTMLElement).getByText('Analytics')).toBeInTheDocument()
   })
 

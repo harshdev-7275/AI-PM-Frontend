@@ -326,17 +326,22 @@ export default function WorkflowPage() {
     if (slug && projects.length === 0) void loadProjects(slug)
   }, [slug]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Auto-select first project when projects become available
-  useEffect(() => {
-    if (projects.length > 0 && !selectedProjectId) {
-      setSelectedProjectId(projects[0]!.id)
-    }
-  }, [projects]) // eslint-disable-line react-hooks/exhaustive-deps
+  // Auto-select first project when projects become available (render-time
+  // adjustment — see React docs "Adjusting state when a prop changes")
+  if (projects.length > 0 && !selectedProjectId) {
+    setSelectedProjectId(projects[0]!.id)
+  }
+
+  // Close the add-status form when the selected project changes
+  const [prevSelectedProjectId, setPrevSelectedProjectId] = useState(selectedProjectId)
+  if (selectedProjectId !== prevSelectedProjectId) {
+    setPrevSelectedProjectId(selectedProjectId)
+    setAddingStatus(false)
+  }
 
   // Reload statuses whenever the selected project changes
   useEffect(() => {
     if (selectedProjectId) {
-      setAddingStatus(false)
       void loadStatuses()
     }
   }, [selectedProjectId]) // eslint-disable-line react-hooks/exhaustive-deps

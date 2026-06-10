@@ -19,4 +19,14 @@ export default defineConfig([
       globals: globals.browser,
     },
   },
+  {
+    // Raw shadcn output — vendor code we never edit (see FrontendRules §5).
+    // Their cva-variant exports and internal patterns trip react-refresh and
+    // react-hooks rules; fixing would mean editing generated files.
+    files: ['src/components/ui/**/*.{ts,tsx}'],
+    rules: {
+      'react-refresh/only-export-components': 'off',
+      'react-hooks/purity': 'off',
+    },
+  },
 ])

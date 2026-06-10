@@ -12,7 +12,6 @@ const DashboardLayout   = lazy(() => import('@/features/dashboard/DashboardLayou
 const DashboardPage     = lazy(() => import('@/features/dashboard/DashboardPage'))
 const BoardPage         = lazy(() => import('@/features/dashboard/pages/BoardPage'))
 const BacklogPage       = lazy(() => import('@/features/dashboard/pages/BacklogPage'))
-const AIAssistantPage   = lazy(() => import('@/features/dashboard/pages/AIAssistantPage'))
 const SettingsPage      = lazy(() => import('@/features/settings/pages/SettingsPage'))
 const MembersPage       = lazy(() => import('@/features/settings/pages/MembersPage'))
 const WorkflowPage      = lazy(() => import('@/features/settings/pages/WorkflowPage'))
@@ -52,7 +51,6 @@ export function AppRouter() {
           <Route path="projects/:projectId/board"   element={guard('the board', <BoardPage />)} />
           <Route path="projects/:projectId/backlog" element={guard('the backlog', <BacklogPage />)} />
           <Route path="projects/:projectId/members" element={guard('project members', <ProjectMembersPage />)} />
-          <Route path="ai-assistant" element={guard('the AI assistant', <AIAssistantPage />)} />
           <Route path="analytics"    element={guard('analytics', <AnalyticsPage />)} />
           <Route path="settings" element={guard('settings', <SettingsPage />)}>
             <Route path="members"   element={guard('org members', <MembersPage />)} />

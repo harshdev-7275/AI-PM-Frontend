@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { X } from 'lucide-react'
 import { toast } from 'sonner'
@@ -51,31 +51,32 @@ export default function NewProjectModal({ isOpen, onClose }: NewProjectModalProp
   const { createProject } = useProject()
 
   const [name,              setName]              = useState('')
-  const [key,               setKey]               = useState('')
+  const [manualKey,         setManualKey]         = useState('')
   const [keyEdited,         setKeyEdited]         = useState(false)
   const [description,       setDescription]       = useState('')
   const [selectedColor,     setSelectedColor]     = useState(PRESET_COLORS[0] ?? '#6366f1')
   const [isSubmitting,      setIsSubmitting]      = useState(false)
 
-  // Auto-generate key from name unless the user has manually edited it
-  useEffect(() => {
-    if (!keyEdited) setKey(generateKey(name))
-  }, [name, keyEdited])
+  // Derived: auto-generate the key from the name unless the user edited it
+  const key = keyEdited ? manualKey : generateKey(name)
 
-  // Reset form when modal closes
-  useEffect(() => {
+  // Reset the form when the modal closes (render-time adjustment — see
+  // React docs "Adjusting state when a prop changes")
+  const [wasOpen, setWasOpen] = useState(isOpen)
+  if (isOpen !== wasOpen) {
+    setWasOpen(isOpen)
     if (!isOpen) {
       setName('')
-      setKey('')
+      setManualKey('')
       setKeyEdited(false)
       setDescription('')
       setSelectedColor(PRESET_COLORS[0] ?? '#6366f1')
       setIsSubmitting(false)
     }
-  }, [isOpen])
+  }
 
   const handleKeyChange = (val: string) => {
-    setKey(val.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6))
+    setManualKey(val.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6))
     setKeyEdited(true)
   }
 

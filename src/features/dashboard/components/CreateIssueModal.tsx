@@ -3,7 +3,7 @@ import { X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import type { CreateIssueInput, IssueStatus, IssueType, IssuePriority } from '@/types'
+import type { Category, CreateIssueInput, IssueStatus, IssueType, IssuePriority } from '@/types'
 
 // =============================================================================
 // CONSTANTS
@@ -12,8 +12,6 @@ import type { CreateIssueInput, IssueStatus, IssueType, IssuePriority } from '@/
 const ISSUE_TYPES: { value: IssueType; label: string }[] = [
   { value: 'task',    label: 'Task'    },
   { value: 'bug',     label: 'Bug'     },
-  { value: 'story',   label: 'Story'   },
-  { value: 'epic',    label: 'Epic'    },
   { value: 'feature', label: 'Feature' },
   { value: 'subtask', label: 'Subtask' },
 ]
@@ -34,6 +32,7 @@ interface CreateIssueModalProps {
   onClose:         () => void
   defaultStatusId: string
   statuses:        IssueStatus[]
+  categories:      Category[]
   onSubmit:        (input: CreateIssueInput) => Promise<void>
 }
 
@@ -46,10 +45,12 @@ export function CreateIssueModal({
   onClose,
   defaultStatusId,
   statuses,
+  categories,
   onSubmit,
 }: CreateIssueModalProps) {
   const [title,       setTitle]       = useState('')
   const [type,        setType]        = useState<IssueType>('task')
+  const [categoryId,  setCategoryId]  = useState('')
   const [priority,    setPriority]    = useState<IssuePriority>('medium')
   const [statusId,    setStatusId]    = useState(defaultStatusId)
   const [assigneeId,  setAssigneeId]  = useState('')
@@ -57,10 +58,18 @@ export function CreateIssueModal({
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error,       setError]       = useState<string | null>(null)
 
-  // Sync statusId when the default changes (different column clicked)
-  useEffect(() => {
+  // Render-time adjustments (see React docs "Adjusting state when a prop
+  // changes"):
+  // — sync statusId when the default changes (different column clicked)
+  const [prevDefaultStatusId, setPrevDefaultStatusId] = useState(defaultStatusId)
+  if (defaultStatusId !== prevDefaultStatusId) {
+    setPrevDefaultStatusId(defaultStatusId)
     setStatusId(defaultStatusId)
-  }, [defaultStatusId])
+  }
+  // — default categoryId to the first category once categories load
+  if (categories.length > 0 && !categoryId) {
+    setCategoryId(categories[0]?.id ?? '')
+  }
 
   // Escape key closes the modal
   useEffect(() => {
@@ -72,22 +81,29 @@ export function CreateIssueModal({
     return () => document.removeEventListener('keydown', handleKey)
   }, [isOpen, onClose])
 
-  // Reset form when modal closes
-  useEffect(() => {
+  // Reset the form when the modal closes (render-time adjustment)
+  const [wasOpen, setWasOpen] = useState(isOpen)
+  if (isOpen !== wasOpen) {
+    setWasOpen(isOpen)
     if (!isOpen) {
       setTitle('')
       setType('task')
+      setCategoryId(categories[0]?.id ?? '')
       setPriority('medium')
       setAssigneeId('')
       setDescription('')
       setError(null)
       setIsSubmitting(false)
     }
-  }, [isOpen])
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!title.trim()) return
+    if (!categoryId) {
+      setError('Please select a category.')
+      return
+    }
 
     setIsSubmitting(true)
     setError(null)
@@ -96,6 +112,7 @@ export function CreateIssueModal({
       await onSubmit({
         title:      title.trim(),
         type,
+        categoryId,
         priority,
         statusId,
         ...(assigneeId.trim() ? { assigneeId: assigneeId.trim() } : {}),
@@ -145,6 +162,25 @@ export function CreateIssueModal({
               autoFocus
               className="h-8 text-sm"
             />
+          </div>
+
+          {/* Category */}
+          <div className="flex flex-col gap-1.5">
+            <Label className="text-xs text-muted-foreground">Category</Label>
+            {categories.length === 0 ? (
+              <p className="text-xs text-muted-foreground italic">No categories yet — create one in Backlog first.</p>
+            ) : (
+              <select
+                value={categoryId}
+                onChange={(e) => setCategoryId(e.target.value)}
+                required
+                className="h-8 rounded-md border border-input bg-background px-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-brand-primary/40 focus:border-brand-primary/50 transition-colors"
+              >
+                {categories.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            )}
           </div>
 
           {/* Type + Priority — side by side */}
@@ -236,7 +272,7 @@ export function CreateIssueModal({
             </Button>
             <Button
               type="submit"
-              disabled={isSubmitting || !title.trim()}
+              disabled={isSubmitting || !title.trim() || !categoryId}
               className="h-8 px-3 text-sm bg-brand-primary hover:bg-brand-primary-hover text-white border-0"
             >
               {isSubmitting ? 'Creating…' : 'Create issue'}

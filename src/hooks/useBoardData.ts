@@ -8,11 +8,34 @@ import {
   getIssueStatuses,
   getIssues,
   getSprints,
+  getCategories,
   createIssue as createIssueApi,
-  updateIssueStatus as updateIssueStatusApi,
+  createCategory as createCategoryApi,
+  updateIssue as updateIssueApi,
 } from '@/services/api'
 import { env } from '@/lib/env'
-import type { CreateIssueInput, Issue } from '@/types'
+import type { Category, CreateIssueInput, Issue } from '@/types'
+
+// =============================================================================
+// DRAG UPDATE
+// =============================================================================
+
+/**
+ * Builds the PATCH payload for a card dropped on a (category × status) cell.
+ * Only fields that actually changed are included (the backend writes a history
+ * row per submitted field). Returns null for a no-op drop.
+ */
+export function buildDragUpdate(
+  issue:      Pick<Issue, 'statusId' | 'categoryId'>,
+  statusId:   string,
+  categoryId: string,
+): { statusId?: string; categoryId?: string } | null {
+  const update = {
+    ...(statusId   !== issue.statusId   && { statusId }),
+    ...(categoryId !== issue.categoryId && { categoryId }),
+  }
+  return Object.keys(update).length > 0 ? update : null
+}
 
 // =============================================================================
 // SSE EVENT TYPES — must match backend issues.sse.ts
@@ -21,6 +44,7 @@ import type { CreateIssueInput, Issue } from '@/types'
 type BoardEvent =
   | { type: 'CONNECTED' }
   | { type: 'ISSUE_STATUS_UPDATED'; issueId: string; statusId: string; actorId: string; actorName: string }
+  | { type: 'ISSUE_UPDATED'; issue: Issue; actorId: string; actorName: string }
   | { type: 'ISSUE_CREATED'; issue: Issue; actorId: string; actorName: string }
 
 // =============================================================================
@@ -28,9 +52,10 @@ type BoardEvent =
 // =============================================================================
 
 const boardKeys = {
-  issues:   (slug: string, projectId: string) => ['board', slug, projectId, 'issues'] as const,
-  statuses: (slug: string, projectId: string) => ['board', slug, projectId, 'statuses'] as const,
-  sprints:  (slug: string, projectId: string) => ['board', slug, projectId, 'sprints'] as const,
+  issues:     (slug: string, projectId: string) => ['board', slug, projectId, 'issues'] as const,
+  statuses:   (slug: string, projectId: string) => ['board', slug, projectId, 'statuses'] as const,
+  sprints:    (slug: string, projectId: string) => ['board', slug, projectId, 'sprints'] as const,
+  categories: (slug: string, projectId: string) => ['board', slug, projectId, 'categories'] as const,
 }
 
 // =============================================================================
@@ -93,6 +118,14 @@ export function useBoardData() {
         })
       }
 
+      if (event.type === 'ISSUE_UPDATED') {
+        // Covers board drags (status/category move) and field edits
+        if (!isMe) {
+          void queryClient.invalidateQueries({ queryKey: boardKeys.issues(slug, projectId) })
+          toast(`${actor} updated "${event.issue.title}"`, { duration: 3000, icon: '👤' })
+        }
+      }
+
       if (event.type === 'ISSUE_CREATED') {
         if (!isMe) {
           void queryClient.invalidateQueries({ queryKey: boardKeys.issues(slug, projectId) })
@@ -105,7 +138,7 @@ export function useBoardData() {
     }
 
     return () => es.close()
-  }, [slug, projectId, currentUserId, queryClient]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [slug, projectId, currentUserId, queryClient])  
 
   const issuesQuery = useQuery({
     queryKey: boardKeys.issues(slug ?? '', projectId ?? ''),
@@ -125,16 +158,22 @@ export function useBoardData() {
     enabled:  Boolean(slug) && Boolean(projectId),
   })
 
+  const categoriesQuery = useQuery({
+    queryKey: boardKeys.categories(slug ?? '', projectId ?? ''),
+    queryFn:  () => getCategories(slug!, projectId!),
+    enabled:  Boolean(slug) && Boolean(projectId),
+  })
+
   const dragMutation = useMutation({
-    mutationFn: ({ issueId, statusId }: { issueId: string; statusId: string }) =>
-      updateIssueStatusApi(slug!, projectId!, issueId, statusId),
-    onMutate: async ({ issueId, statusId }) => {
+    mutationFn: ({ issueId, update }: { issueId: string; update: { statusId?: string; categoryId?: string } }) =>
+      updateIssueApi(slug!, projectId!, issueId, update),
+    onMutate: async ({ issueId, update }) => {
       // Optimistic update — update the cached issues list immediately
       await queryClient.cancelQueries({ queryKey: boardKeys.issues(slug ?? '', projectId ?? '') })
       const previous = queryClient.getQueryData(boardKeys.issues(slug ?? '', projectId ?? ''))
 
       queryClient.setQueryData(boardKeys.issues(slug ?? '', projectId ?? ''), (old: Issue[] | undefined) =>
-        old?.map((i) => (i.id === issueId ? { ...i, statusId } : i))
+        old?.map((i) => (i.id === issueId ? { ...i, ...update } : i))
       )
 
       return { previous }
@@ -159,20 +198,42 @@ export function useBoardData() {
     },
   })
 
-  const handleDragEnd = async (issueId: string, newStatusId: string): Promise<void> => {
-    await dragMutation.mutateAsync({ issueId, statusId: newStatusId })
+  const createCategoryMutation = useMutation({
+    mutationFn: ({ name, color, description }: { name: string; color: string; description?: string }) =>
+      createCategoryApi(slug!, projectId!, name, color, description),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: boardKeys.categories(slug ?? '', projectId ?? '') })
+    },
+  })
+
+  // Dropping on a (category × status) cell can change status, category, or
+  // both. A category change also re-inherits that category's sprint (backend).
+  const handleDragEnd = async (issueId: string, newStatusId: string, newCategoryId?: string): Promise<void> => {
+    const issue = (issuesQuery.data ?? []).find((i) => i.id === issueId)
+    if (!issue) return
+
+    const update = buildDragUpdate(issue, newStatusId, newCategoryId ?? issue.categoryId)
+    if (!update) return
+
+    await dragMutation.mutateAsync({ issueId, update })
   }
 
   const handleCreateIssue = async (input: CreateIssueInput): Promise<Issue> => {
     return createMutation.mutateAsync(input)
   }
 
+  const handleCreateCategory = async (name: string, color: string, description?: string): Promise<Category> => {
+    return createCategoryMutation.mutateAsync({ name, color, description })
+  }
+
   return {
-    issues:    issuesQuery.data ?? [],
-    statuses:  statusesQuery.data ?? [],
-    sprints:   sprintsQuery.data ?? [],
-    isLoading: issuesQuery.isLoading || statusesQuery.isLoading || sprintsQuery.isLoading,
+    issues:     issuesQuery.data ?? [],
+    statuses:   statusesQuery.data ?? [],
+    sprints:    sprintsQuery.data ?? [],
+    categories: categoriesQuery.data ?? [] as Category[],
+    isLoading:  issuesQuery.isLoading || statusesQuery.isLoading || sprintsQuery.isLoading,
     handleDragEnd,
     handleCreateIssue,
+    handleCreateCategory,
   }
 }

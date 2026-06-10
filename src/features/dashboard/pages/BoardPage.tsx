@@ -15,9 +15,10 @@ import { useBoardData } from '@/hooks/useBoardData'
 import { useDragScroll } from '@/hooks/useDragScroll'
 import { useProjectStore } from '@/store/useProjectStore'
 import { BoardLoadingSkeleton } from '@/components/blocks/BoardLoadingSkeleton'
-import { BoardColumn } from '../components/BoardColumn'
+import { BoardSwimlane } from '../components/BoardSwimlane'
 import { IssueCardContent } from '../components/IssueCard'
 import { CreateIssueModal } from '../components/CreateIssueModal'
+import { CreateCategoryModal } from '../components/CreateCategoryModal'
 import { IssueSlideOver } from '../components/IssueSlideOver'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -180,12 +181,17 @@ export default function BoardPage() {
   const navigate   = useNavigate()
   const { slug, projectId } = useParams<{ slug: string; projectId: string }>()
 
-  const { statuses, issues, sprints, isLoading, handleDragEnd, handleCreateIssue } = useBoardData()
+  const {
+    statuses, issues, sprints, categories, isLoading,
+    handleDragEnd, handleCreateIssue, handleCreateCategory,
+  } = useBoardData()
   const currentProject = useProjectStore((s) => s.currentProject)
 
-  const [activeTab,       setActiveTab]       = useState<Tab>('Board')
-  const [modalOpen,       setModalOpen]       = useState(false)
-  const [modalStatusId,   setModalStatusId]   = useState<string>('')
+  const [activeTab,         setActiveTab]         = useState<Tab>('Board')
+  const [modalOpen,         setModalOpen]         = useState(false)
+  const [modalStatusId,     setModalStatusId]     = useState<string>('')
+  const [modalCategoryId,   setModalCategoryId]   = useState<string | undefined>(undefined)
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false)
   const [activeIssue,     setActiveIssue]     = useState<Issue | null>(null)
   const [selectedIssueId, setSelectedIssueId] = useState<string | null>(null)
   const [isSlideOverOpen, setIsSlideOverOpen] = useState(false)
@@ -193,10 +199,18 @@ export default function BoardPage() {
 
   const [sprintFilter, setSprintFilter] = useState<string>('all')
 
-  // Default to active sprint when sprints first load
-  useEffect(() => {
-    if (activeSprint && sprintFilter === 'all') setSprintFilter(activeSprint.id)
-  }, [activeSprint?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+  // Clock snapshot per mount — keeps render pure; day-level precision means
+  // staleness within a session is irrelevant
+  const [mountedAt] = useState(() => Date.now())
+
+  // Default to the active sprint when it first appears (render-time
+  // adjustment). Only fires once per sprint id so the user can still pick
+  // "all" afterwards.
+  const [defaultedSprintId, setDefaultedSprintId] = useState<string | null>(null)
+  if (activeSprint && activeSprint.id !== defaultedSprintId) {
+    setDefaultedSprintId(activeSprint.id)
+    if (sprintFilter === 'all') setSprintFilter(activeSprint.id)
+  }
 
   const filteredIssues =
     sprintFilter === 'all'    ? issues :
@@ -208,15 +222,25 @@ export default function BoardPage() {
     setIsSlideOverOpen(true)
   }
 
-  const dragScroll = useDragScroll()
+  // Destructured so render only touches plain values — the hook's returned
+  // object holds refs, which the react-hooks analyzer won't allow reading
+  // through a property access during render
+  const {
+    ref:          dragScrollRef,
+    onMouseDown:  dragScrollMouseDown,
+    onMouseMove:  dragScrollMouseMove,
+    onMouseUp:    dragScrollMouseUp,
+    onMouseLeave: dragScrollMouseLeave,
+  } = useDragScroll()
 
   // 8px movement threshold — prevents accidental drags on click
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
   )
 
-  const openModal = (statusId: string) => {
+  const openModal = (statusId: string, categoryId?: string) => {
     setModalStatusId(statusId)
+    setModalCategoryId(categoryId)
     setModalOpen(true)
   }
 
@@ -229,8 +253,21 @@ export default function BoardPage() {
     setActiveIssue(null)
     const { active, over } = event
     if (!over) return
-    void handleDragEnd(active.id as string, over.id as string)
+    // Lane cells carry their status + category in droppable data — a drop can
+    // change the issue's column (status), lane (category), or both
+    const cell = over.data.current as { statusId?: string; categoryId?: string } | undefined
+    if (!cell?.statusId) return
+    void handleDragEnd(active.id as string, cell.statusId, cell.categoryId)
   }
+
+  // The create-issue modal preselects the first category in the list — put
+  // the lane the user clicked in first (same pattern as BacklogPage)
+  const modalCategories = modalCategoryId
+    ? [
+        ...categories.filter((c) => c.id === modalCategoryId),
+        ...categories.filter((c) => c.id !== modalCategoryId),
+      ]
+    : categories
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -253,7 +290,7 @@ export default function BoardPage() {
                 {activeSprint.endDate && (
                   <span className="text-xs text-muted-foreground">
                     {Math.max(0, Math.ceil(
-                      (new Date(activeSprint.endDate).getTime() - Date.now()) / 86_400_000
+                      (new Date(activeSprint.endDate).getTime() - mountedAt) / 86_400_000
                     ))} days left
                   </span>
                 )}
@@ -288,8 +325,16 @@ export default function BoardPage() {
               Members
             </Button>
             <Button
+              variant="outline"
+              onClick={() => setIsCategoryModalOpen(true)}
+              className="h-8 px-3 text-sm"
+            >
+              <Plus size={14} className="mr-1" />
+              New category
+            </Button>
+            <Button
               onClick={() => openModal(statuses[0]?.id ?? '')}
-              disabled={statuses.length === 0}
+              disabled={statuses.length === 0 || categories.length === 0}
               className="h-8 px-3 text-sm bg-brand-primary hover:bg-brand-primary-hover text-white border-0"
             >
               <Plus size={14} className="mr-1" />
@@ -337,27 +382,58 @@ export default function BoardPage() {
         <div className="flex flex-1 items-center justify-center">
           <p className="text-sm text-muted-foreground">No statuses configured for this project.</p>
         </div>
+      ) : categories.length === 0 ? (
+        <div className="flex flex-1 flex-col items-center justify-center gap-1">
+          <p className="text-sm text-muted-foreground">No categories yet.</p>
+          <p className="text-xs text-muted-foreground/70">
+            Create a category to start organising the board — use the “New category” button above.
+          </p>
+        </div>
       ) : (
         <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd}>
           <div
-            ref={dragScroll.ref}
-            onMouseDown={dragScroll.onMouseDown}
-            onMouseMove={dragScroll.onMouseMove}
-            onMouseUp={dragScroll.onMouseUp}
-            onMouseLeave={dragScroll.onMouseLeave}
-            className="flex-1 overflow-x-auto overflow-y-hidden cursor-grab"
+            ref={dragScrollRef}
+            onMouseDown={dragScrollMouseDown}
+            onMouseMove={dragScrollMouseMove}
+            onMouseUp={dragScrollMouseUp}
+            onMouseLeave={dragScrollMouseLeave}
+            className="flex-1 overflow-auto cursor-grab"
           >
-            <div className="flex gap-6 px-6 pt-4 pb-6 h-full">
-              {statuses.map((status) => (
-                <BoardColumn
-                  key={status.id}
-                  status={status}
+            <div className="min-w-max px-6 pt-2 pb-6">
+              {/* Status header row — rendered once, aligned with lane cells */}
+              <div className="flex sticky top-0 z-20 bg-background">
+                <div className="w-40 shrink-0 sticky left-0 z-10 bg-background border-r border-border" />
+                {statuses.map((status) => (
+                  <div key={status.id} className="w-56 shrink-0 flex items-center gap-2 px-2 py-2.5 border-r border-border">
+                    <span
+                      className="w-2 h-2 rounded-full shrink-0"
+                      style={{ backgroundColor: status.color }}
+                    />
+                    <span className="text-sm font-semibold text-foreground truncate">
+                      {status.name}
+                    </span>
+                    <Badge variant="secondary" className="h-4 px-1.5 text-[11px] min-w-[20px] justify-center bg-muted/80 text-muted-foreground">
+                      {filteredIssues.filter((i) => i.statusId === status.id).length}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+
+              {/* One swimlane per category */}
+              {categories.map((category) => (
+                <BoardSwimlane
+                  key={category.id}
+                  category={category}
+                  statuses={statuses}
+                  issues={filteredIssues.filter((i) => i.categoryId === category.id)}
                   projectKey={currentProject?.key ?? ''}
-                  issues={filteredIssues.filter((i) => i.statusId === status.id)}
                   onAddIssue={openModal}
                   onCardClick={handleCardClick}
                 />
               ))}
+
+              {/* Closes the grid — bottom edge of the last lane */}
+              <div className="border-t border-border" />
             </div>
           </div>
 
@@ -384,6 +460,7 @@ export default function BoardPage() {
             issueId={selectedIssueId}
             isOpen={isSlideOverOpen}
             onClose={() => setIsSlideOverOpen(false)}
+            categories={categories}
           />
         )}
       </AnimatePresence>
@@ -393,11 +470,23 @@ export default function BoardPage() {
       {/* ------------------------------------------------------------------ */}
       <CreateIssueModal
         isOpen={modalOpen}
-        onClose={() => setModalOpen(false)}
+        onClose={() => { setModalOpen(false); setModalCategoryId(undefined) }}
         defaultStatusId={modalStatusId}
         statuses={statuses}
+        categories={modalCategories}
         onSubmit={async (input) => {
           await handleCreateIssue(input)
+        }}
+      />
+
+      {/* ------------------------------------------------------------------ */}
+      {/* Create category modal                                                */}
+      {/* ------------------------------------------------------------------ */}
+      <CreateCategoryModal
+        isOpen={isCategoryModalOpen}
+        onClose={() => setIsCategoryModalOpen(false)}
+        onSubmit={async (name, color, description) => {
+          await handleCreateCategory(name, color, description)
         }}
       />
     </div>

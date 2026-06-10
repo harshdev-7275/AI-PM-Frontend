@@ -3,19 +3,24 @@ import {
   getSprints,
   getIssues,
   getIssueStatuses,
+  getCategories,
   createIssue,
+  createCategory,
+  updateCategory,
+  deleteCategory,
   createSprint,
   startSprint,
   completeSprint,
-  addIssueToSprint,
-  removeIssueFromSprint,
+  assignCategoryToSprint,
+  unassignCategoryFromSprint,
 } from '@/services/api'
-import type { Sprint, Issue, IssueStatus, CreateIssueInput } from '@/types'
+import type { Sprint, Issue, IssueStatus, Category, CreateIssueInput } from '@/types'
 
 interface BacklogState {
   sprints:          Sprint[]
   issues:           Issue[]
   statuses:         IssueStatus[]
+  categories:       Category[]
   isLoading:        boolean
   isCreatingSprint: boolean
 }
@@ -25,6 +30,7 @@ export function useBacklog(slug: string, projectId: string) {
     sprints:          [],
     issues:           [],
     statuses:         [],
+    categories:       [],
     isLoading:        false,
     isCreatingSprint: false,
   })
@@ -32,16 +38,18 @@ export function useBacklog(slug: string, projectId: string) {
   const loadBacklog = useCallback(async () => {
     setState((s) => ({ ...s, isLoading: true }))
     try {
-      const [fetchedSprints, fetchedIssues, fetchedStatuses] = await Promise.all([
+      const [fetchedSprints, fetchedIssues, fetchedStatuses, fetchedCategories] = await Promise.all([
         getSprints(slug, projectId),
         getIssues(slug, projectId),
         getIssueStatuses(slug, projectId),
+        getCategories(slug, projectId),
       ])
       setState((s) => ({
         ...s,
-        sprints:  fetchedSprints,
-        issues:   fetchedIssues,
-        statuses: fetchedStatuses,
+        sprints:    fetchedSprints,
+        issues:     fetchedIssues,
+        statuses:   fetchedStatuses,
+        categories: fetchedCategories,
       }))
     } finally {
       setState((s) => ({ ...s, isLoading: false }))
@@ -62,6 +70,36 @@ export function useBacklog(slug: string, projectId: string) {
     } finally {
       setState((s) => ({ ...s, isCreatingSprint: false }))
     }
+  }, [slug, projectId])
+
+  const handleCreateCategory = useCallback(async (
+    name:         string,
+    color:        string,
+    description?: string,
+  ): Promise<Category> => {
+    const category = await createCategory(slug, projectId, name, color, description)
+    setState((s) => ({ ...s, categories: [...s.categories, category] }))
+    return category
+  }, [slug, projectId])
+
+  const handleUpdateCategory = useCallback(async (
+    categoryId: string,
+    input:       { name?: string; color?: string; description?: string | null },
+  ): Promise<Category> => {
+    const updated = await updateCategory(slug, projectId, categoryId, input)
+    setState((s) => ({
+      ...s,
+      categories: s.categories.map((c) => c.id === categoryId ? updated : c),
+    }))
+    return updated
+  }, [slug, projectId])
+
+  const handleDeleteCategory = useCallback(async (categoryId: string): Promise<void> => {
+    await deleteCategory(slug, projectId, categoryId)
+    setState((s) => ({
+      ...s,
+      categories: s.categories.filter((c) => c.id !== categoryId),
+    }))
   }, [slug, projectId])
 
   const handleCreateIssue = useCallback(async (input: CreateIssueInput): Promise<Issue> => {
@@ -89,28 +127,35 @@ export function useBacklog(slug: string, projectId: string) {
       return {
         ...s,
         sprints: nextSprint ? [...updatedSprints, nextSprint] : updatedSprints,
+        // Unassign categories that were on the completed sprint
+        categories: s.categories.map((c) =>
+          c.sprintId === sprintId ? { ...c, sprintId: null } : c
+        ),
       }
     })
   }, [slug, projectId])
 
-  // Patches sprintId on the issue — backlogIssues updates automatically.
-  const handleAddIssueToSprint = useCallback(async (sprintId: string, issue: Issue): Promise<void> => {
-    await addIssueToSprint(slug, projectId, sprintId, issue.id)
+  // Assigns a category to a sprint — all category issues inherit the sprint
+  const handleAssignCategoryToSprint = useCallback(async (categoryId: string, sprintId: string): Promise<void> => {
+    const updated = await assignCategoryToSprint(slug, projectId, categoryId, sprintId)
     setState((s) => ({
       ...s,
+      categories: s.categories.map((c) => c.id === categoryId ? updated : c),
+      // Sync issue sprint assignments in local state
       issues: s.issues.map((i) =>
-        i.id === issue.id ? { ...i, sprintId } : i
+        i.categoryId === categoryId ? { ...i, sprintId } : i
       ),
     }))
   }, [slug, projectId])
 
-  // Patches sprintId to null — issue reappears in backlogIssues automatically.
-  const handleRemoveIssueFromSprint = useCallback(async (sprintId: string, issueId: string): Promise<void> => {
-    await removeIssueFromSprint(slug, projectId, sprintId, issueId)
+  // Unassigns a category from its sprint — all category issues move to backlog
+  const handleUnassignCategoryFromSprint = useCallback(async (categoryId: string): Promise<void> => {
+    const updated = await unassignCategoryFromSprint(slug, projectId, categoryId)
     setState((s) => ({
       ...s,
+      categories: s.categories.map((c) => c.id === categoryId ? updated : c),
       issues: s.issues.map((i) =>
-        i.id === issueId ? { ...i, sprintId: null } : i
+        i.categoryId === categoryId ? { ...i, sprintId: null } : i
       ),
     }))
   }, [slug, projectId])
@@ -121,15 +166,19 @@ export function useBacklog(slug: string, projectId: string) {
     sprints:          state.sprints,
     backlogIssues,
     statuses:         state.statuses,
+    categories:       state.categories,
     isLoading:        state.isLoading,
     isCreatingSprint: state.isCreatingSprint,
     allIssues:        state.issues,
     loadBacklog,
     handleCreateSprint,
+    handleCreateCategory,
+    handleUpdateCategory,
+    handleDeleteCategory,
     handleCreateIssue,
     handleStartSprint,
     handleCompleteSprint,
-    handleAddIssueToSprint,
-    handleRemoveIssueFromSprint,
+    handleAssignCategoryToSprint,
+    handleUnassignCategoryFromSprint,
   }
 }

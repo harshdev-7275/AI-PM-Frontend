@@ -27,7 +27,7 @@ export class RouteErrorBoundary extends Component<RouteErrorBoundaryProps, Route
 
   componentDidCatch(error: Error, info: { componentStack?: string | null }): void {
     // Centralised logging would go here (Sentry, etc.)
-    // eslint-disable-next-line no-console
+     
     console.error(`[RouteErrorBoundary${this.props.label ? `: ${this.props.label}` : ''}]`, error, info)
   }
 

@@ -15,8 +15,6 @@ const PRIORITY_COLOR: Record<IssuePriority, string> = {
 }
 
 const TYPE_LABEL: Record<IssueType, string> = {
-  epic:    'Epic',
-  story:   'Story',
   task:    'Task',
   bug:     'Bug',
   feature: 'Feature',

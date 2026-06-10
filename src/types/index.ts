@@ -28,24 +28,30 @@ export interface Org {
   createdAt: string
 }
 
-export type CadenceType = 'none' | 'weekly' | 'biweekly' | 'monthly'
-
 export interface Project {
-  id:                string
-  orgId:             string
-  name:              string
-  key:               string
-  description:       string | null
-  icon:              string | null
-  color:             string | null
-  isArchived:        boolean
-  createdBy:         string
-  createdAt:         string
-  cadenceType:       CadenceType
-  cadenceStartDay:   number | null
-  cadenceDuration:   number | null
-  cadenceAutoCreate: boolean
-  cadenceNaming:     string | null
+  id:               string
+  orgId:            string
+  name:             string
+  key:              string
+  description:      string | null
+  icon:             string | null
+  color:            string | null
+  isArchived:       boolean
+  createdBy:        string
+  createdAt:        string
+  weeklyAutoCreate: boolean
+}
+
+export interface Category {
+  id:          string
+  projectId:   string
+  orgId:       string
+  name:        string
+  color:       string
+  description: string | null
+  sprintId:    string | null
+  createdBy:   string
+  createdAt:   string
 }
 
 export interface ApiError {
@@ -70,7 +76,7 @@ export interface WorkflowStatus extends IssueStatus {
   updatedAt: string
 }
 
-export type IssueType = 'epic' | 'story' | 'task' | 'bug' | 'feature' | 'subtask'
+export type IssueType = 'feature' | 'bug' | 'task' | 'subtask'
 
 export type IssuePriority  = 'critical' | 'high' | 'medium' | 'low'
 
@@ -82,6 +88,7 @@ export interface Issue {
   title: string
   description: string | null
   type: IssueType
+  categoryId: string
   priority: IssuePriority
   statusId: string
   assigneeId: string | null
@@ -102,6 +109,7 @@ export interface Issue {
 export interface CreateIssueInput {
   title:       string
   type:        IssueType
+  categoryId:  string
   priority:    IssuePriority
   statusId:    string
   assigneeId?: string
@@ -110,6 +118,8 @@ export interface CreateIssueInput {
 export interface UpdateIssueInput {
   title?:       string
   description?: string | null
+  type?:        IssueType
+  categoryId?:  string
   priority?:    IssuePriority
   assigneeId?:  string | null
   dueDate?:     string | null

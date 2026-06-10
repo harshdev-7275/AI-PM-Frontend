@@ -227,7 +227,7 @@ export default function DashboardPage() {
       if (active.length === 0) return
 
       const cols = Math.min(3, window.innerWidth >= 1024 ? 3 : window.innerWidth >= 640 ? 2 : 1)
-      let newIndex = selectedCardIndex
+      let newIndex: number
 
       switch (e.key) {
         case 'ArrowRight':

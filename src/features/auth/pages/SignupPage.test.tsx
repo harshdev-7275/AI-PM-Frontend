@@ -186,24 +186,50 @@ describe('Step 3 — Organization details', () => {
 // =============================================================================
 
 describe('invite query param', () => {
-  it('redirects to /invite/{token} after signup when ?invite param is present', async () => {
+  it('skips workspace creation and redirects to /invite/{token} after the role step', async () => {
+    let orgCreated = false
     server.use(
       http.post('http://localhost:4000/auth/register', () =>
         HttpResponse.json(mockAuthResponse, { status: 201 })
       ),
-      http.post('http://localhost:4000/orgs', () =>
-        HttpResponse.json(mockOrg, { status: 201 })
+      http.post('http://localhost:4000/orgs', () => {
+        orgCreated = true
+        return HttpResponse.json(mockOrg, { status: 201 })
+      }),
+    )
+
+    const user = userEvent.setup()
+    renderSignupPage('/signup?invite=abc-invite-token')
+
+    // Selecting a role completes signup — step 3 (create workspace) never shows
+    await fillStep1AndContinue(user)
+    await user.click(screen.getByRole('radio', { name: 'Engineer' }))
+
+    await waitFor(() => {
+      expect(screen.getByText('invite page')).toBeInTheDocument()
+    })
+    expect(orgCreated).toBe(false)
+  })
+
+  it('stays on the wizard and shows an error toast when registration fails', async () => {
+    server.use(
+      http.post('http://localhost:4000/auth/register', () =>
+        HttpResponse.json(
+          { error: 'EMAIL_TAKEN', message: 'An account with this email already exists' },
+          { status: 409 },
+        )
       ),
     )
 
     const user = userEvent.setup()
     renderSignupPage('/signup?invite=abc-invite-token')
 
-    await goToStep3(user)
-    await user.click(screen.getByRole('button', { name: /create workspace/i }))
+    await fillStep1AndContinue(user)
+    await user.click(screen.getByRole('radio', { name: 'Engineer' }))
 
     await waitFor(() => {
-      expect(screen.getByText('invite page')).toBeInTheDocument()
+      expect(toast.error).toHaveBeenCalledWith('Something went wrong. Please try again.')
     })
+    expect(screen.queryByText('invite page')).not.toBeInTheDocument()
   })
 })

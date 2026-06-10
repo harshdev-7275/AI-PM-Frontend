@@ -14,7 +14,6 @@ describe('buildBreadcrumbs', () => {
   it('maps a known top-level section to its label', () => {
     expect(buildBreadcrumbs('/acme/dashboard', projects)).toEqual([{ label: 'Boards' }])
     expect(buildBreadcrumbs('/acme/issues', projects)).toEqual([{ label: 'Issues' }])
-    expect(buildBreadcrumbs('/acme/ai-assistant', projects)).toEqual([{ label: 'AI Assistant' }])
     expect(buildBreadcrumbs('/acme/settings/members', projects)).toEqual([{ label: 'Settings' }])
   })
 
