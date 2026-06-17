@@ -12,6 +12,13 @@ export interface ToolCallRecord {
   result_preview: string | null
 }
 
+// A prior conversation turn replayed to the backend so the agent has multi-turn
+// context (the chat endpoint itself is stateless).
+export interface ChatTurn {
+  role:    'user' | 'assistant'
+  content: string
+}
+
 export interface ChatResponse {
   message:    string
   tool_calls: ToolCallRecord[]
@@ -25,10 +32,12 @@ export interface ChatResponse {
 export async function sendChatMessage(
   message: string,
   projectId?: string,
+  history: ChatTurn[] = [],
 ): Promise<ChatResponse> {
   const res = await api.post('/ai/chat', {
     message,
     ...(projectId ? { projectId } : {}),
+    ...(history.length ? { history } : {}),
   }, {
     timeout: CHAT_TIMEOUT_MS,
   })

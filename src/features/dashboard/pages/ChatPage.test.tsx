@@ -49,7 +49,7 @@ describe('ChatPage project scoping', () => {
     await user.click(screen.getByRole('button', { name: /send/i }))
 
     await waitFor(() => expect(sendChatMessage).toHaveBeenCalledTimes(1))
-    expect(sendChatMessage).toHaveBeenCalledWith('hello', undefined)
+    expect(sendChatMessage).toHaveBeenCalledWith('hello', undefined, [])
   })
 
   it('scopes the message to the selected project', async () => {
@@ -63,6 +63,29 @@ describe('ChatPage project scoping', () => {
     await user.click(screen.getByRole('button', { name: /send/i }))
 
     await waitFor(() => expect(sendChatMessage).toHaveBeenCalledTimes(1))
-    expect(sendChatMessage).toHaveBeenCalledWith('whats open?', 'p-1')
+    expect(sendChatMessage).toHaveBeenCalledWith('whats open?', 'p-1', [])
+  })
+
+  it('replays prior turns as history on the next message', async () => {
+    const user = userEvent.setup()
+    render(<ChatPage />)
+
+    const box = screen.getByPlaceholderText(/ask about/i)
+    await user.type(box, 'first')
+    await user.click(screen.getByRole('button', { name: /send/i }))
+    await waitFor(() => expect(sendChatMessage).toHaveBeenCalledTimes(1))
+    // First turn carries no history (welcome message is excluded).
+    expect(sendChatMessage).toHaveBeenLastCalledWith('first', undefined, [])
+
+    // Wait for the assistant reply to land before the next turn.
+    await screen.findByText('ok')
+
+    await user.type(box, 'second')
+    await user.click(screen.getByRole('button', { name: /send/i }))
+    await waitFor(() => expect(sendChatMessage).toHaveBeenCalledTimes(2))
+    expect(sendChatMessage).toHaveBeenLastCalledWith('second', undefined, [
+      { role: 'user', content: 'first' },
+      { role: 'assistant', content: 'ok' },
+    ])
   })
 })

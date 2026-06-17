@@ -53,7 +53,7 @@ export function AppRouter() {
           <Route path="projects/:projectId/backlog" element={guard('the backlog', <BacklogPage />)} />
           <Route path="projects/:projectId/members" element={guard('project members', <ProjectMembersPage />)} />
           <Route path="analytics"    element={guard('analytics', <AnalyticsPage />)} />
-          <Route path="chat"         element={guard('AI assistant', <ChatPage />)} />
+          <Route path="chat"         element={guard('Planiqo Assistant', <ChatPage />)} />
           <Route path="settings" element={guard('settings', <SettingsPage />)}>
             <Route path="members"   element={guard('org members', <MembersPage />)} />
             <Route path="workflow"  element={guard('the workflow editor', <WorkflowPage />)} />

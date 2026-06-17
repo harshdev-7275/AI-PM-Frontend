@@ -16,6 +16,10 @@ import { sendChatMessage, type ToolCallRecord } from '@/services/aiService'
 // Sentinel for "no project" — Radix Select forbids empty-string item values.
 const ALL_PROJECTS = '__all__'
 
+// How many prior turns to replay for multi-turn context. Bounds payload size;
+// the backend caps again on its side.
+const MAX_HISTORY_TURNS = 20
+
 // =============================================================================
 // TYPES
 // =============================================================================
@@ -110,7 +114,7 @@ export default function ChatPage() {
     {
       id:      'welcome',
       role:    'assistant',
-      content: 'Hi! I\'m your PM assistant. Ask me about your projects, issues, or team members.',
+      content: 'Hi! I\'m Planiqo Assistant. Ask me about your projects, issues, or team members.',
     },
   ])
   const [input,   setInput]   = useState('')
@@ -135,7 +139,14 @@ export default function ChatPage() {
 
     try {
       const scoped = projectId === ALL_PROJECTS ? undefined : projectId
-      const res = await sendChatMessage(text, scoped)
+      // Replay prior turns (excluding the welcome message and error bubbles) so
+      // the agent can resolve references like "from TP". `messages` here is the
+      // pre-update array — it holds the conversation before this user turn.
+      const history = messages
+        .filter(m => m.id !== 'welcome' && !m.error)
+        .slice(-MAX_HISTORY_TURNS)
+        .map(m => ({ role: m.role, content: m.content }))
+      const res = await sendChatMessage(text, scoped, history)
       setMessages(prev => [...prev, {
         id:        `${Date.now()}-ai`,
         role:      'assistant',
@@ -168,7 +179,7 @@ export default function ChatPage() {
       {/* Header */}
       <div className="flex items-center gap-2 border-b border-border px-6 py-3 shrink-0">
         <Bot size={18} className="text-primary" />
-        <h1 className="text-sm font-semibold">AI Assistant</h1>
+        <h1 className="text-sm font-semibold">Planiqo Assistant</h1>
         <span className="ml-auto text-[11px] text-muted-foreground">Beta</span>
       </div>
 
