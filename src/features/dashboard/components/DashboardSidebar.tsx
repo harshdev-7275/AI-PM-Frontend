@@ -6,6 +6,7 @@ import {
   Settings,
   Zap,
   Plus,
+  Bot,
 } from 'lucide-react'
 import {
   Sidebar,
@@ -43,6 +44,7 @@ const NAV_ITEMS = [
   { icon: CircleDot, label: 'Issues',       path: 'issues'       },
   { icon: Zap,       label: 'Sprints',      path: 'sprints'      },
   { icon: BarChart2, label: 'Analytics',    path: 'analytics'    },
+  { icon: Bot,       label: 'AI Assistant', path: 'chat'         },
 ] as const
 
 // =============================================================================
