@@ -28,11 +28,11 @@ vi.mock('@/hooks/useProject', () => ({
 
 const sprints: Sprint[] = [
   {
-    id: 'sp1', projectId: 'p1', orgId: 'o1', name: 'Sprint 1', goal: null,
+    id: 'sp1', projectId: 'p1', name: 'Sprint 1', goal: null,
     status: 'planned', startDate: null, endDate: null,
-    createdBy: 'u1', createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z',
+    createdAt: '2026-01-01T00:00:00Z',
   },
-] as Sprint[]
+]
 
 const categories: Category[] = [
   { id: 'c-auth', projectId: 'p1', orgId: 'o1', name: 'Auth',     color: '#ef4444', description: null, sprintId: 'sp1', createdBy: 'u1', createdAt: '2026-01-01T00:00:00Z' },

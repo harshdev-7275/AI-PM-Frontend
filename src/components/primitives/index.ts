@@ -1,5 +1,3 @@
 export { Icon } from './Icon'
 export type { IconName, IconProps } from './Icon'
-export { CodeBlock } from './CodeBlock'
-export { MarkdownContent } from './MarkdownContent'
 export { RouteErrorBoundary } from './RouteErrorBoundary'

@@ -420,7 +420,7 @@ export default function BacklogPage() {
       <CreateCategoryModal
         isOpen={editingCategory !== null}
         onClose={() => setEditingCategory(null)}
-        initialValues={editingCategory ?? undefined}
+        {...(editingCategory ? { initialValues: editingCategory } : {})}
         onSubmit={async (name, color, description) => {
           if (editingCategory) {
             await handleUpdateCategory(editingCategory.id, { name, color, description: description ?? null })

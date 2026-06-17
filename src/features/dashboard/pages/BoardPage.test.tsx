@@ -21,9 +21,9 @@ vi.mock('@/store/useProjectStore', () => ({
 }))
 
 const statuses: IssueStatus[] = [
-  { id: 's-todo', name: 'Todo',        color: '#888888', position: 1, category: 'todo' },
-  { id: 's-prog', name: 'In Progress', color: '#3b82f6', position: 2, category: 'in_progress' },
-] as IssueStatus[]
+  { id: 's-todo', name: 'Todo',        color: '#888888', position: 1 },
+  { id: 's-prog', name: 'In Progress', color: '#3b82f6', position: 2 },
+]
 
 const categories: Category[] = [
   { id: 'c-auth', projectId: 'p1', orgId: 'o1', name: 'Auth',     color: '#ef4444', description: null, sprintId: null, createdBy: 'u1', createdAt: '2026-01-01T00:00:00Z' },

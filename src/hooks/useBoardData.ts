@@ -223,7 +223,7 @@ export function useBoardData() {
   }
 
   const handleCreateCategory = async (name: string, color: string, description?: string): Promise<Category> => {
-    return createCategoryMutation.mutateAsync({ name, color, description })
+    return createCategoryMutation.mutateAsync({ name, color, ...(description !== undefined ? { description } : {}) })
   }
 
   return {
