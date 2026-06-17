@@ -18,6 +18,7 @@ const WorkflowPage      = lazy(() => import('@/features/settings/pages/WorkflowP
 const AcceptInvitePage  = lazy(() => import('@/features/settings/pages/AcceptInvitePage'))
 const ProjectMembersPage = lazy(() => import('@/features/dashboard/pages/ProjectMembersPage'))
 const AnalyticsPage      = lazy(() => import('@/features/dashboard/pages/AnalyticsPage'))
+const ChatPage           = lazy(() => import('@/features/dashboard/pages/ChatPage'))
 
 // Wrap a route element in a per-route error boundary so a render error in one
 // route shows a recoverable fallback instead of blanking the whole app
@@ -52,6 +53,7 @@ export function AppRouter() {
           <Route path="projects/:projectId/backlog" element={guard('the backlog', <BacklogPage />)} />
           <Route path="projects/:projectId/members" element={guard('project members', <ProjectMembersPage />)} />
           <Route path="analytics"    element={guard('analytics', <AnalyticsPage />)} />
+          <Route path="chat"         element={guard('AI assistant', <ChatPage />)} />
           <Route path="settings" element={guard('settings', <SettingsPage />)}>
             <Route path="members"   element={guard('org members', <MembersPage />)} />
             <Route path="workflow"  element={guard('the workflow editor', <WorkflowPage />)} />
