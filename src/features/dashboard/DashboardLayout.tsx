@@ -1,12 +1,11 @@
 import { Fragment, useEffect, useState, Suspense } from 'react'
 import { Outlet, useLocation, useParams } from 'react-router-dom'
-import { FolderKanban, Plus } from 'lucide-react'
+import { FolderKanban } from 'lucide-react'
 import {
   SidebarInset,
   SidebarProvider,
   SidebarTrigger,
 } from '@/components/ui/sidebar'
-import { Button } from '@/components/ui/button'
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -25,7 +24,7 @@ import NewProjectModal from './NewProjectModal'
 // TOPBAR
 // =============================================================================
 
-function Topbar({ onNewProject }: { onNewProject: () => void }) {
+function Topbar() {
   const currentOrg   = useOrgStore((s) => s.currentOrg)
   const { pathname } = useLocation()
   const { projects } = useProject()
@@ -67,13 +66,7 @@ function Topbar({ onNewProject }: { onNewProject: () => void }) {
         </BreadcrumbList>
       </Breadcrumb>
 
-      {/* Right-side actions */}
-      <div className="ml-auto flex items-center gap-1">
-        <Button size="sm" variant="outline" onClick={onNewProject} aria-label="New project">
-          <Plus className="size-4" />
-          <span className="hidden sm:inline">New project</span>
-        </Button>
-      </div>
+      <div className="ml-auto" />
     </header>
   )
 }
@@ -107,7 +100,7 @@ export default function DashboardLayout() {
     <SidebarProvider>
       <DashboardSidebar onNewProject={() => setIsNewProjectModalOpen(true)} />
       <SidebarInset className="overflow-hidden md:peer-data-[variant=inset]:m-4 md:peer-data-[variant=inset]:h-[calc(100svh-2rem)]">
-        <Topbar onNewProject={() => setIsNewProjectModalOpen(true)} />
+        <Topbar />
         <main className="flex-1 overflow-y-auto min-h-0">
           {shouldShowSkeleton ? (
             <DashboardLoadingSkeleton />

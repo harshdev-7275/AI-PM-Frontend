@@ -53,7 +53,7 @@ function OAuthButton({ icon, label }: { icon: 'google' | 'microsoft'; label: str
     <Button
       type="button"
       variant="outline"
-      className="w-full h-auto py-2.5 gap-3 dark:bg-white/[0.06] bg-gray-100 dark:border-white/10 border-gray-300 dark:text-white/80 text-gray-700 dark:hover:bg-white/10 hover:bg-gray-200 dark:hover:text-white/90 hover:text-gray-900"
+      className="w-full h-auto py-2.5 gap-3"
     >
       <Icon name={icon} size={18} />
       {label}
@@ -64,9 +64,9 @@ function OAuthButton({ icon, label }: { icon: 'google' | 'microsoft'; label: str
 function Divider({ label }: { label: string }) {
   return (
     <div className="w-full flex items-center gap-3">
-      <div className="flex-1 h-px dark:bg-white/10 bg-gray-300" />
-      <span className="dark:text-white/30 text-gray-600 text-xs">{label}</span>
-      <div className="flex-1 h-px dark:bg-white/10 bg-gray-300" />
+      <div className="flex-1 h-px bg-border" />
+      <span className="text-xs text-muted-foreground">{label}</span>
+      <div className="flex-1 h-px bg-border" />
     </div>
   )
 }
@@ -82,11 +82,11 @@ function StepDots({ current, total }: { current: number; total: number }) {
                 ? 'bg-brand-accent'
                 : i === current
                   ? 'bg-brand-primary'
-                  : 'dark:bg-white/15 bg-gray-400'
+                  : 'bg-muted-foreground/30'
             }`}
           />
           {i < total - 1 && (
-            <div className={`w-6 h-px transition-colors ${i < current ? 'bg-brand-accent/60' : 'dark:bg-white/10 bg-gray-300'}`} />
+            <div className={`w-6 h-px transition-colors ${i < current ? 'bg-brand-accent/60' : 'bg-border'}`} />
           )}
         </div>
       ))}
@@ -108,11 +108,11 @@ function StepHeader({
   return (
     <div className="flex flex-col items-center gap-2">
       <div className="text-center">
-        <h1 className="dark:text-white text-gray-900 text-xl font-semibold tracking-tight whitespace-nowrap">{title}</h1>
-        {subtitle && <p className="dark:text-white/40 text-gray-700 text-xs mt-0.5">{subtitle}</p>}
+        <h1 className="text-foreground text-xl font-semibold tracking-tight whitespace-nowrap">{title}</h1>
+        {subtitle && <p className="text-muted-foreground text-xs mt-0.5">{subtitle}</p>}
       </div>
       <StepDots current={step - 1} total={total} />
-      <p className="dark:text-white/30 text-gray-600 text-[10px] uppercase tracking-widest">
+      <p className="text-muted-foreground text-[10px] uppercase tracking-widest">
         Step {step} of {total}
       </p>
     </div>
@@ -132,7 +132,7 @@ interface Step1Props {
 function Step1({ name, email, password, onChange, onNext }: Omit<Step1Props, 'error'>) {
   return (
     <div className="w-full max-w-sm flex flex-col items-center gap-3">
-      <motion.div variants={containerVariants} initial="hidden" animate="visible">
+      <motion.div variants={containerVariants} initial="hidden" animate="visible" className="w-full flex flex-col items-center gap-3">
         <motion.div variants={itemVariants}>
           <StepHeader step={1} total={3} title="Create your workspace" />
         </motion.div>
@@ -142,24 +142,24 @@ function Step1({ name, email, password, onChange, onNext }: Omit<Step1Props, 'er
           <OAuthButton icon="microsoft"  label="Continue with Microsoft" />
         </motion.div>
 
-        <motion.div variants={itemVariants}>
+        <motion.div variants={itemVariants} className="w-full">
           <Divider label="or" />
         </motion.div>
 
         <motion.form variants={itemVariants} onSubmit={onNext} className="w-full flex flex-col gap-2">
         <div className="flex flex-col gap-1">
-          <Label className="dark:text-white/60 text-gray-700 text-xs">Full name</Label>
+          <Label className="text-xs text-muted-foreground">Full name</Label>
           <Input
             placeholder="Jane Doe"
             value={name}
             onChange={onChange('name')}
             required
             autoComplete="name"
-            className="dark:bg-white/[0.05] bg-gray-100 dark:border-white/10 border-gray-300 dark:text-white text-gray-900 dark:placeholder:text-white/20 placeholder:text-gray-500 focus-visible:ring-brand-primary/50 focus-visible:border-brand-primary/50"
+            className=""
           />
         </div>
         <div className="flex flex-col gap-1">
-          <Label className="dark:text-white/60 text-gray-700 text-xs">Work email</Label>
+          <Label className="text-xs text-muted-foreground">Work email</Label>
           <Input
             type="email"
             placeholder="jane@company.com"
@@ -167,11 +167,11 @@ function Step1({ name, email, password, onChange, onNext }: Omit<Step1Props, 'er
             onChange={onChange('email')}
             required
             autoComplete="email"
-            className="dark:bg-white/[0.05] bg-gray-100 dark:border-white/10 border-gray-300 dark:text-white text-gray-900 dark:placeholder:text-white/20 placeholder:text-gray-500 focus-visible:ring-brand-primary/50 focus-visible:border-brand-primary/50"
+            className=""
           />
         </div>
         <div className="flex flex-col gap-1">
-          <Label className="dark:text-white/60 text-gray-700 text-xs">Password</Label>
+          <Label className="text-xs text-muted-foreground">Password</Label>
           <Input
             type="password"
             placeholder="••••••••"
@@ -179,7 +179,7 @@ function Step1({ name, email, password, onChange, onNext }: Omit<Step1Props, 'er
             onChange={onChange('password')}
             required
             autoComplete="new-password"
-            className="dark:bg-white/[0.05] bg-gray-100 dark:border-white/10 border-gray-300 dark:text-white text-gray-900 dark:placeholder:text-white/20 placeholder:text-gray-500 focus-visible:ring-brand-primary/50 focus-visible:border-brand-primary/50"
+            className=""
           />
         </div>
 
@@ -188,7 +188,7 @@ function Step1({ name, email, password, onChange, onNext }: Omit<Step1Props, 'er
         </Button>
         </motion.form>
 
-        <motion.p variants={itemVariants} className="dark:text-white/35 text-gray-600 text-sm text-center">
+        <motion.p variants={itemVariants} className="text-muted-foreground text-sm text-center">
         Already have an account?{' '}
         <Link to="/login" className="text-brand-accent hover:text-brand-accent-hover transition-colors">
           Log in
@@ -210,7 +210,7 @@ interface Step2Props {
 function Step2({ onRoleSelect, onBack, isSubmitting }: Step2Props) {
   return (
     <div className="w-full max-w-sm flex flex-col items-center gap-3">
-      <motion.div variants={containerVariants} initial="hidden" animate="visible">
+      <motion.div variants={containerVariants} initial="hidden" animate="visible" className="w-full flex flex-col items-center gap-3">
         <motion.div variants={itemVariants}>
           <StepHeader step={2} total={3} title="What's your role?" />
         </motion.div>
@@ -229,7 +229,7 @@ function Step2({ onRoleSelect, onBack, isSubmitting }: Step2Props) {
                 key={role}
                 value={role}
                 aria-label={role}
-                className="h-auto px-4 py-3 rounded-lg text-sm justify-start text-left dark:bg-white/[0.04] bg-gray-100 dark:border-white/10 border-gray-300 dark:text-white/60 text-gray-700 dark:hover:bg-white/[0.08] hover:bg-gray-200 dark:hover:text-white/80 hover:text-gray-900 dark:data-[state=on]:bg-brand-primary/20 data-[state=on]:bg-brand-primary/10 data-[state=on]:text-brand-primary"
+                className="h-auto px-4 py-3 rounded-lg text-sm justify-start text-left data-[state=on]:bg-brand-primary/10 data-[state=on]:text-brand-primary"
               >
                 {role}
               </ToggleGroupItem>
@@ -242,13 +242,13 @@ function Step2({ onRoleSelect, onBack, isSubmitting }: Step2Props) {
             type="button"
             variant="ghost"
             onClick={onBack}
-            className="dark:text-white/35 text-gray-600 dark:hover:text-white/60 hover:text-gray-900 hover:bg-transparent"
+            className="text-muted-foreground hover:text-foreground hover:bg-transparent"
           >
             Back to previous step
           </Button>
         </motion.div>
 
-        <motion.p variants={itemVariants} className="dark:text-white/35 text-gray-600 text-sm text-center">
+        <motion.p variants={itemVariants} className="text-muted-foreground text-sm text-center">
           Already have an account?{' '}
           <Link to="/login" className="text-brand-accent hover:text-brand-accent-hover transition-colors">
             Log in
@@ -281,7 +281,7 @@ function Step3({ isSubmitting, orgName, orgSlug, onOrgNameChange, onOrgSlugChang
 
   return (
     <div className="w-full max-w-sm flex flex-col items-center gap-3">
-      <motion.div variants={containerVariants} initial="hidden" animate="visible">
+      <motion.div variants={containerVariants} initial="hidden" animate="visible" className="w-full flex flex-col items-center gap-3">
         <motion.div variants={itemVariants}>
           <StepHeader
             step={3}
@@ -293,40 +293,40 @@ function Step3({ isSubmitting, orgName, orgSlug, onOrgNameChange, onOrgSlugChang
 
         <motion.form variants={itemVariants} onSubmit={onSubmit} className="w-full flex flex-col gap-2">
         <div className="flex flex-col gap-1">
-          <Label className="dark:text-white/60 text-gray-700 text-xs">Company name</Label>
+          <Label className="text-xs text-muted-foreground">Company name</Label>
           <Input
             placeholder="Acme Corp"
             value={orgName}
             onChange={(e) => handleCompany(e.target.value)}
-            className="dark:bg-white/[0.05] bg-gray-100 dark:border-white/10 border-gray-300 dark:text-white text-gray-900 dark:placeholder:text-white/20 placeholder:text-gray-500 focus-visible:ring-brand-primary/50 focus-visible:border-brand-primary/50"
+            className=""
           />
         </div>
 
         <div className="flex flex-col gap-1">
-          <Label className="dark:text-white/60 text-gray-700 text-xs">Workspace URL</Label>
-          <div className="flex rounded-lg overflow-hidden border dark:border-white/10 border-gray-300 focus-within:border-brand-primary/50 focus-within:ring-1 focus-within:ring-brand-primary/50 transition-colors">
+          <Label className="text-xs text-muted-foreground">Workspace URL</Label>
+          <div className="flex rounded-lg overflow-hidden border border-input focus-within:border-ring focus-within:ring-1 focus-within:ring-ring transition-colors">
             <input
               type="text"
               value={orgSlug}
               onChange={(e) => onOrgSlugChange(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
               placeholder="acme"
-              className="flex-1 dark:bg-white/[0.05] bg-gray-100 px-3 py-2 dark:text-white text-gray-900 text-sm dark:placeholder:text-white/20 placeholder:text-gray-500 outline-none min-w-0"
+              className="flex-1 bg-transparent px-3 py-2 text-foreground text-sm placeholder:text-muted-foreground outline-none min-w-0"
             />
-            <span className="flex items-center px-3 dark:bg-white/[0.03] bg-gray-200 dark:border-l border-l dark:border-white/10 border-gray-300 dark:text-white/35 text-gray-600 text-sm whitespace-nowrap">
+            <span className="flex items-center px-3 bg-muted border-l border-input text-muted-foreground text-sm whitespace-nowrap">
               .planiqo.com
             </span>
           </div>
         </div>
 
         <div className="flex flex-col gap-1">
-          <Label className="dark:text-white/60 text-gray-700 text-xs">Team size</Label>
+          <Label className="text-xs text-muted-foreground">Team size</Label>
           <Select value={teamSize} onValueChange={setTeamSize}>
-            <SelectTrigger className="dark:bg-white/[0.05] bg-gray-100 dark:border-white/10 border-gray-300 dark:text-white text-gray-900 focus:ring-brand-primary/50 dark:data-[placeholder]:text-white/25 data-[placeholder]:text-gray-500">
+            <SelectTrigger className="data-[placeholder]:text-muted-foreground">
               <SelectValue placeholder="Select size" />
             </SelectTrigger>
-            <SelectContent className="dark:bg-zinc-900 bg-white dark:border-white/10 border-gray-300 dark:text-white text-gray-900">
+            <SelectContent>
               {TEAM_SIZES.map((s) => (
-                <SelectItem key={s} value={s} className="dark:focus:bg-brand-primary/20 focus:bg-brand-primary/10 dark:focus:text-white focus:text-white">
+                <SelectItem key={s} value={s}>
                   {s}
                 </SelectItem>
               ))}
@@ -335,11 +335,11 @@ function Step3({ isSubmitting, orgName, orgSlug, onOrgNameChange, onOrgSlugChang
         </div>
 
         <div className="flex flex-col gap-1">
-          <p className="dark:text-white/30 text-gray-600 text-[10px] text-center uppercase tracking-widest">Optional</p>
+          <p className="text-muted-foreground text-[10px] text-center uppercase tracking-widest">Optional</p>
           <Button
             type="button"
             variant="outline"
-            className="w-full h-auto py-2.5 gap-3 dark:bg-white/[0.04] bg-gray-100 dark:border-white/10 border-gray-300 dark:text-white/50 text-gray-700 dark:hover:bg-white/[0.08] hover:bg-gray-200 dark:hover:text-white/70 hover:text-gray-900"
+            className="w-full h-auto py-2.5 gap-3"
           >
             <Icon name="microsoft" size={18} />
             Connect Microsoft Teams
@@ -366,13 +366,13 @@ function Step3({ isSubmitting, orgName, orgSlug, onOrgNameChange, onOrgSlugChang
             type="button"
             variant="ghost"
             onClick={onBack}
-            className="dark:text-white/35 text-gray-600 dark:hover:text-white/60 hover:text-gray-900 hover:bg-transparent"
+            className="text-muted-foreground hover:text-foreground hover:bg-transparent"
           >
             Back to previous step
           </Button>
         </motion.div>
 
-        <motion.p variants={itemVariants} className="dark:text-white/35 text-gray-600 text-sm text-center">
+        <motion.p variants={itemVariants} className="text-muted-foreground text-sm text-center">
           Already have an account?{' '}
           <Link to="/login" className="text-brand-accent hover:text-brand-accent-hover transition-colors">
             Log in

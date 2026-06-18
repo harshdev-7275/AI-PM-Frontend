@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useOutletContext, useParams } from 'react-router-dom'
 import { MoreHorizontal, FolderPlus, LayoutGrid, FolderOpen, Copy, Archive, Trash2 } from 'lucide-react'
-import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import {
@@ -56,13 +55,10 @@ function ProjectCard({ project, stats, onOpen, index }: ProjectCardProps) {
   const color = project.color ?? '#6366f1'
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.04, duration: 0.2 }}
+    <div
       onClick={() => onOpen(project)}
       data-testid="project-card"
-      className="group relative w-full max-w-[320px] flex cursor-pointer flex-col gap-3 overflow-hidden rounded-xl bg-card p-4 ring-1 ring-border shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+      className="group relative w-full max-w-[320px] flex cursor-pointer flex-col gap-3 overflow-hidden rounded-xl bg-card p-4 ring-1 ring-border shadow-sm hover:ring-2 hover:ring-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       role="button"
       tabIndex={0}
       onKeyDown={(e) => {
@@ -168,7 +164,7 @@ function ProjectCard({ project, stats, onOpen, index }: ProjectCardProps) {
           {stats.completionPercentage}%
         </span>
       </div>
-    </motion.div>
+    </div>
   )
 }
 
@@ -362,7 +358,7 @@ export default function DashboardPage() {
           {isLoading ? (
             <div
               data-testid="project-grid"
-              className="grid gap-4 justify-items-start"
+              className="mt-5 grid gap-4 justify-items-start"
               style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' }}
             >
               {[1, 2, 3, 4, 5, 6].map((i) => (
@@ -373,7 +369,7 @@ export default function DashboardPage() {
             <>
               <div
                 data-testid="project-grid"
-                className="grid gap-4 justify-items-start"
+                className="mt-5 grid gap-4 justify-items-start"
                 style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' }}
               >
                 {active.map((project, index) => {
@@ -385,7 +381,7 @@ export default function DashboardPage() {
                         cardRefs.current[index] = el
                       }}
                       className={`w-full max-w-[320px] outline-none ${
-                        selectedCardIndex === index ? 'ring-2 ring-brand-primary rounded-xl' : ''
+                        selectedCardIndex === index ? 'ring-2 ring-border rounded-xl' : ''
                       }`}
                     >
                       <ProjectCard

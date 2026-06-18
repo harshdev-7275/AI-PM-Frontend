@@ -1,6 +1,6 @@
 export function ProjectCardSkeleton() {
   return (
-    <div className="relative flex flex-col rounded-2xl p-5 bg-muted/30 border border-border/50 animate-pulse">
+    <div className="relative flex flex-col rounded-xl w-full max-w-[320px] p-4 bg-muted/30 border border-border/50 animate-pulse">
       {/* Date + menu */}
       <div className="flex items-center justify-between mb-4">
         <div className="h-3 w-16 rounded bg-muted" />
