@@ -50,7 +50,7 @@ interface ProjectCardProps {
   index: number
 }
 
-function ProjectCard({ project, stats, onOpen, index }: ProjectCardProps) {
+function ProjectCard({ project, stats, onOpen }: ProjectCardProps) {
   const { slug } = useParams<{ slug: string }>()
   const color = project.color ?? '#6366f1'
 
