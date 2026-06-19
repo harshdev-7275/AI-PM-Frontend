@@ -124,6 +124,21 @@ export default function ChatPage() {
   const bottomRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
+  const handleProjectChange = (newId: string) => {
+    if (newId === projectId) return
+    setProjectId(newId)
+    const label = newId === ALL_PROJECTS
+      ? 'All projects'
+      : projects.find(p => p.id === newId)?.name ?? 'selected project'
+    setMessages([
+      {
+        id:      'welcome',
+        role:    'assistant',
+        content: `Switched to **${label}**. How can I help?`,
+      },
+    ])
+  }
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
@@ -216,7 +231,7 @@ export default function ChatPage() {
             disabled={loading}
             autoFocus
           />
-          <Select value={projectId} onValueChange={setProjectId} disabled={loading}>
+          <Select value={projectId} onValueChange={handleProjectChange} disabled={loading}>
             <SelectTrigger
               aria-label="Project context"
               className="h-10 w-40 shrink-0 text-sm"
