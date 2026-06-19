@@ -12,11 +12,9 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { useOrgStore } from '@/store/useOrgStore'
 import { useProjectStore } from '@/store/useProjectStore'
-import { useIssueStore } from '@/store/useIssueStore'
 import { useKeyboardShortcut } from '@/hooks/useKeyboardShortcut'
 import { ProjectCardSkeleton } from '@/components/blocks/ProjectCardSkeleton'
 import { QuickSearchModal } from './QuickSearchModal'
-import { calculateProjectStats } from '@/utils/projectStats'
 import type { Project } from '@/types'
 
 // =============================================================================
@@ -45,20 +43,30 @@ function formatMonth(): string {
 
 interface ProjectCardProps {
   project: Project
-  stats: ReturnType<typeof calculateProjectStats>
   onOpen: (project: Project) => void
   index: number
 }
 
-function ProjectCard({ project, stats, onOpen }: ProjectCardProps) {
+function ProjectCard({ project, onOpen }: ProjectCardProps) {
   const { slug } = useParams<{ slug: string }>()
   const color = project.color ?? '#6366f1'
+  const { total, done } = project.stats
+  const completionPct = total > 0 ? Math.round((done / total) * 100) : 0
 
   return (
     <div
       onClick={() => onOpen(project)}
       data-testid="project-card"
-      className="group relative w-full max-w-[320px] flex cursor-pointer flex-col gap-3 overflow-hidden rounded-xl bg-card p-4 ring-1 ring-border shadow-sm hover:ring-2 hover:ring-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="group relative w-full max-w-[320px] flex cursor-pointer flex-col gap-3 overflow-hidden rounded-xl bg-card p-4 shadow-sm focus-visible:outline-none transition-shadow"
+      style={{
+        borderTop: `3px solid ${color}`,
+        boxShadow: `inset 0 0 0 1px var(--color-border)`,
+        '--hover-ring': color,
+      } as React.CSSProperties}
+      onMouseEnter={(e) => { e.currentTarget.style.boxShadow = `inset 0 0 0 2px ${color}` }}
+      onMouseLeave={(e) => { e.currentTarget.style.boxShadow = `inset 0 0 0 1px var(--color-border)` }}
+      onFocus={(e) => { e.currentTarget.style.boxShadow = `inset 0 0 0 2px ${color}` }}
+      onBlur={(e) => { e.currentTarget.style.boxShadow = `inset 0 0 0 1px var(--color-border)` }}
       role="button"
       tabIndex={0}
       onKeyDown={(e) => {
@@ -68,12 +76,6 @@ function ProjectCard({ project, stats, onOpen }: ProjectCardProps) {
         }
       }}
     >
-      {/* Left-edge status bar — 4px vertical accent */}
-      <div
-        aria-hidden
-        className="absolute inset-y-0 left-0 w-1"
-        style={{ backgroundColor: color }}
-      />
 
       {/* Row 1 — Identity: project icon + name + key */}
       <div className="flex items-center gap-2">
@@ -141,27 +143,27 @@ function ProjectCard({ project, stats, onOpen }: ProjectCardProps) {
       <dl className="grid grid-cols-3 gap-2 pt-1 border-t border-border/60">
         <div className="flex flex-col gap-0.5">
           <dt className="text-[10px] uppercase tracking-wide text-muted-foreground">To Do</dt>
-          <dd className="text-sm font-semibold text-foreground tabular-nums">{stats.todo}</dd>
+          <dd className="text-sm font-semibold text-foreground tabular-nums">{project.stats.todo}</dd>
         </div>
         <div className="flex flex-col gap-0.5">
           <dt className="text-[10px] uppercase tracking-wide text-muted-foreground">Active</dt>
-          <dd className="text-sm font-semibold text-foreground tabular-nums">{stats.inProgress}</dd>
+          <dd className="text-sm font-semibold text-foreground tabular-nums">{project.stats.inProgress}</dd>
         </div>
         <div className="flex flex-col gap-0.5">
           <dt className="text-[10px] uppercase tracking-wide text-muted-foreground">Done</dt>
-          <dd className="text-sm font-semibold text-foreground tabular-nums">{stats.completed}</dd>
+          <dd className="text-sm font-semibold text-foreground tabular-nums">{project.stats.done}</dd>
         </div>
       </dl>
 
       {/* Row 4 — Progress bar (linear) */}
       <div className="flex items-center gap-2">
         <Progress
-          value={stats.completionPercentage}
+          value={completionPct}
           className="h-1.5 flex-1 [&>[data-slot=progress-indicator]]:bg-[var(--project-color)]"
           style={{ '--project-color': color } as React.CSSProperties}
         />
         <span className="text-[10px] font-medium text-muted-foreground tabular-nums shrink-0">
-          {stats.completionPercentage}%
+          {completionPct}%
         </span>
       </div>
     </div>
@@ -204,8 +206,6 @@ export default function DashboardPage() {
   const { slug } = useParams<{ slug: string }>()
   const currentOrg = useOrgStore((s) => s.currentOrg)
   const projects = useProjectStore((s) => s.projects)
-  const issues = useIssueStore((s) => s.issues)
-  const statuses = useIssueStore((s) => s.statuses)
   const { onNewProject } = useOutletContext<DashboardOutletContext>()
 
   const [isSearchOpen, setIsSearchOpen] = useState(false)
@@ -372,9 +372,7 @@ export default function DashboardPage() {
                 className="mt-5 grid gap-4 justify-items-start"
                 style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' }}
               >
-                {active.map((project, index) => {
-                  const stats = calculateProjectStats(issues, project.id, statuses)
-                  return (
+                {active.map((project, index) => (
                     <div
                       key={project.id}
                       ref={(el) => {
@@ -386,13 +384,11 @@ export default function DashboardPage() {
                     >
                       <ProjectCard
                         project={project}
-                        stats={stats}
                         onOpen={openBoard}
                         index={index}
                       />
                     </div>
-                  )
-                })}
+                ))}
               </div>
 
               {/* Archived section */}
@@ -405,19 +401,15 @@ export default function DashboardPage() {
                     className="grid gap-4 opacity-60 justify-items-start"
                     style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' }}
                   >
-                    {archived.map((project, index) => {
-                      const stats = calculateProjectStats(issues, project.id, statuses)
-                      return (
+                    {archived.map((project, index) => (
                         <div key={project.id} className="w-full max-w-[320px]">
                           <ProjectCard
                             project={project}
-                            stats={stats}
                             onOpen={openBoard}
                             index={active.length + index}
                           />
                         </div>
-                      )
-                    })}
+                    ))}
                   </div>
                 </div>
               )}

@@ -28,6 +28,13 @@ export interface Org {
   createdAt: string
 }
 
+export interface ProjectStats {
+  todo:       number
+  inProgress: number
+  done:       number
+  total:      number
+}
+
 export interface Project {
   id:               string
   orgId:            string
@@ -40,6 +47,7 @@ export interface Project {
   createdBy:        string
   createdAt:        string
   weeklyAutoCreate: boolean
+  stats:            ProjectStats
 }
 
 export interface Category {

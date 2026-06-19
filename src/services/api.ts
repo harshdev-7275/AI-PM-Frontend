@@ -59,6 +59,13 @@ const LogoutResponseSchema = z.object({
   message: z.string(),
 })
 
+const ProjectStatsSchema = z.object({
+  todo:       z.number(),
+  inProgress: z.number(),
+  done:       z.number(),
+  total:      z.number(),
+})
+
 const ProjectSchema = z.object({
   id:               z.string().uuid(),
   orgId:            z.string().uuid(),
@@ -71,6 +78,7 @@ const ProjectSchema = z.object({
   createdBy:        z.string().uuid(),
   createdAt:        z.string(),
   weeklyAutoCreate: z.boolean().default(false),
+  stats:            ProjectStatsSchema.default({ todo: 0, inProgress: 0, done: 0, total: 0 }),
 })
 
 const CategorySchema = z.object({

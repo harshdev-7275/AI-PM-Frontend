@@ -7,9 +7,10 @@ import { MemoryRouter, Outlet, Route, Routes } from 'react-router-dom'
 const mockUseParams = vi.fn(() => ({ slug: 'acme' }))
 
 const mockOrg = { name: 'Acme', plan: 'starter', slug: 'acme' }
+const defaultStats = { todo: 0, inProgress: 0, done: 0, total: 0 }
 const mockProjects = [
-  { id: 'p-1', name: 'new test',  key: 'NT', color: '#ec4899', description: null, isArchived: false, createdAt: '2026-06-01T00:00:00Z' },
-  { id: 'p-2', name: 'Planiqo P', key: 'PP', color: '#a78bfa', description: null, isArchived: false, createdAt: '2026-06-01T00:00:00Z' },
+  { id: 'p-1', name: 'new test',  key: 'NT', color: '#ec4899', description: null, isArchived: false, createdAt: '2026-06-01T00:00:00Z', stats: defaultStats },
+  { id: 'p-2', name: 'Planiqo P', key: 'PP', color: '#a78bfa', description: null, isArchived: false, createdAt: '2026-06-01T00:00:00Z', stats: defaultStats },
 ]
 
 vi.mock('react-router-dom', async () => {
@@ -28,11 +29,6 @@ vi.mock('@/store/useOrgStore', () => ({
 vi.mock('@/store/useProjectStore', () => ({
   useProjectStore: (selector: (s: { projects: typeof mockProjects }) => unknown) =>
     selector({ projects: mockProjects }),
-}))
-
-vi.mock('@/store/useIssueStore', () => ({
-  useIssueStore: (selector: (s: { issues: never[]; statuses: never[] }) => unknown) =>
-    selector({ issues: [], statuses: [] }),
 }))
 
 vi.mock('@/hooks/useKeyboardShortcut', () => ({
@@ -128,14 +124,13 @@ describe('DashboardPage layout', () => {
     }
   })
 
-  it('renders the production-grade 4px left-edge status bar on each card', () => {
+  it('renders a colored top border accent on each card', () => {
     const { container } = renderPage()
     const cards = container.querySelectorAll('[data-testid="project-card"]')
     expect(cards.length).toBe(2)
     for (const card of Array.from(cards)) {
-      // The status bar is a w-1 absolute child with inline background color.
-      const bar = card.querySelector('.absolute.inset-y-0.left-0.w-1')
-      expect(bar).not.toBeNull()
+      const style = (card as HTMLElement).style.borderTop
+      expect(style).toMatch(/3px solid/)
     }
   })
 })
