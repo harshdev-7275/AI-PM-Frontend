@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect } from 'react'
-import { Bot, Send, User, Loader2, ChevronDown, ChevronUp } from 'lucide-react'
+import { useState, useRef, useEffect, useCallback } from 'react'
+import { Bot, Send, User, ChevronDown, ChevronUp, Square } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import {
@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 import { useProjectStore } from '@/store/useProjectStore'
-import { sendChatMessage, type ToolCallRecord } from '@/services/aiService'
+import { streamChatMessage, type ToolCallRecord } from '@/services/aiService'
 
 // Sentinel for "no project" — Radix Select forbids empty-string item values.
 const ALL_PROJECTS = '__all__'
@@ -23,6 +23,14 @@ const MAX_HISTORY_TURNS = 20
 // =============================================================================
 // TYPES
 // =============================================================================
+
+interface ToolCallChip {
+  id:    string
+  tool:  string
+  args:  Record<string, unknown>
+  state: 'start' | 'end'
+  preview: string | null
+}
 
 interface Message {
   id:         string
@@ -68,8 +76,12 @@ function ToolCallsDetail({ toolCalls }: { toolCalls: ToolCallRecord[] }) {
 // MESSAGE BUBBLE
 // =============================================================================
 
-function MessageBubble({ msg }: { msg: Message }) {
+function MessageBubble({ msg, streamingChips }: {
+  msg: Message
+  streamingChips?: ToolCallChip[]
+}) {
   const isUser = msg.role === 'user'
+  const showChips = !isUser && streamingChips && streamingChips.length > 0
   return (
     <div className={cn('flex gap-3', isUser && 'flex-row-reverse')}>
       {/* Avatar */}
@@ -94,7 +106,31 @@ function MessageBubble({ msg }: { msg: Message }) {
         )}>
           {msg.content}
         </div>
-        {msg.toolCalls && msg.toolCalls.length > 0 && (
+        {showChips && (
+          <div className="flex flex-wrap gap-1">
+            {streamingChips!.map(tc => (
+              <span
+                key={tc.id}
+                data-testid="tool-chip"
+                data-tool={tc.tool}
+                data-state={tc.state}
+                className={cn(
+                  'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-mono',
+                  tc.state === 'start'
+                    ? 'border-primary/40 bg-primary/5 text-primary animate-pulse'
+                    : 'border-border bg-muted/60 text-muted-foreground',
+                )}
+                title={tc.preview ?? undefined}
+              >
+                {tc.tool}
+                {Object.keys(tc.args).length > 0 && (
+                  <span className="opacity-70">{JSON.stringify(tc.args)}</span>
+                )}
+              </span>
+            ))}
+          </div>
+        )}
+        {msg.toolCalls && msg.toolCalls.length > 0 && !showChips && (
           <ToolCallsDetail toolCalls={msg.toolCalls} />
         )}
         {msg.model && (
@@ -118,11 +154,14 @@ export default function ChatPage() {
     },
   ])
   const [input,   setInput]   = useState('')
-  const [loading, setLoading] = useState(false)
+  const [streaming, setStreaming] = useState(false)
+  const [streamingChips, setStreamingChips] = useState<ToolCallChip[]>([])
+  const [streamingAiId, setStreamingAiId] = useState<string | null>(null)
   const [projectId, setProjectId] = useState<string>(ALL_PROJECTS)
   const projects = useProjectStore(s => s.projects)
   const bottomRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const abortRef = useRef<AbortController | null>(null)
 
   const handleProjectChange = (newId: string) => {
     if (newId === projectId) return
@@ -141,43 +180,76 @@ export default function ChatPage() {
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
+  }, [messages, streamingChips])
+
+  const cancel = useCallback(() => {
+    abortRef.current?.abort()
+  }, [])
 
   const send = async () => {
     const text = input.trim()
-    if (!text || loading) return
+    if (!text || streaming) return
 
     const userMsg: Message = { id: Date.now().toString(), role: 'user', content: text }
-    setMessages(prev => [...prev, userMsg])
+    const aiMsgId = `${Date.now()}-ai`
+    const aiMsg: Message = { id: aiMsgId, role: 'assistant', content: '' }
+    setMessages(prev => [...prev, userMsg, aiMsg])
     setInput('')
-    setLoading(true)
+    setStreaming(true)
+    setStreamingChips([])
+    setStreamingAiId(aiMsgId)
+
+    const ac = new AbortController()
+    abortRef.current = ac
+
+    const scoped = projectId === ALL_PROJECTS ? undefined : projectId
+    const history = messages
+      .filter(m => m.id !== 'welcome' && !m.error)
+      .slice(-MAX_HISTORY_TURNS)
+      .map(m => ({ role: m.role, content: m.content }))
 
     try {
-      const scoped = projectId === ALL_PROJECTS ? undefined : projectId
-      // Replay prior turns (excluding the welcome message and error bubbles) so
-      // the agent can resolve references like "from TP". `messages` here is the
-      // pre-update array — it holds the conversation before this user turn.
-      const history = messages
-        .filter(m => m.id !== 'welcome' && !m.error)
-        .slice(-MAX_HISTORY_TURNS)
-        .map(m => ({ role: m.role, content: m.content }))
-      const res = await sendChatMessage(text, scoped, history)
-      setMessages(prev => [...prev, {
-        id:        `${Date.now()}-ai`,
-        role:      'assistant',
-        content:   res.message,
-        toolCalls: res.tool_calls,
-        model:     res.model,
-      }])
+      await streamChatMessage(text, scoped, history, {
+        onToken: (delta) => {
+          setMessages(prev => prev.map(m => m.id === aiMsgId ? { ...m, content: m.content + delta } : m))
+        },
+        onToolStart: (tool, id, args) => {
+          setStreamingChips(prev => [...prev, { id, tool, args, state: 'start', preview: null }])
+        },
+        onToolEnd: (id, preview) => {
+          setStreamingChips(prev => prev.map(c => c.id === id ? { ...c, state: 'end', preview } : c))
+        },
+        onDone: (message, toolCalls, model, _steps) => {
+          setMessages(prev => prev.map(m => m.id === aiMsgId
+            ? { ...m, content: message || m.content, toolCalls, model }
+            : m,
+          ))
+        },
+        onError: (code, message) => {
+          setMessages(prev => prev.map(m => m.id === aiMsgId
+            ? { ...m, content: message || code, error: true }
+            : m,
+          ))
+        },
+      }, { signal: ac.signal })
     } catch (err) {
-      setMessages(prev => [...prev, {
-        id:      `${Date.now()}-err`,
-        role:    'assistant',
-        content: err instanceof Error ? err.message : 'Something went wrong. Try again.',
-        error:   true,
-      }])
+      if (err instanceof Error && err.name === 'AbortError') {
+        // User cancelled — keep whatever content was streamed so far.
+        setMessages(prev => prev.map(m => m.id === aiMsgId
+          ? { ...m, content: m.content ? `${m.content}\n\n_(cancelled)_` : '_(cancelled)_' }
+          : m,
+        ))
+      } else {
+        setMessages(prev => prev.map(m => m.id === aiMsgId
+          ? { ...m, content: err instanceof Error ? err.message : 'Something went wrong. Try again.', error: true }
+          : m,
+        ))
+      }
     } finally {
-      setLoading(false)
+      setStreaming(false)
+      setStreamingChips([])
+      setStreamingAiId(null)
+      abortRef.current = null
       textareaRef.current?.focus()
     }
   }
@@ -188,6 +260,8 @@ export default function ChatPage() {
       void send()
     }
   }
+
+  const visibleChips = streamingAiId ? streamingChips : []
 
   return (
     <div className="flex h-full flex-col">
@@ -201,19 +275,12 @@ export default function ChatPage() {
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
         {messages.map(msg => (
-          <MessageBubble key={msg.id} msg={msg} />
+          <MessageBubble
+            key={msg.id}
+            msg={msg}
+            streamingChips={msg.id === streamingAiId ? visibleChips : undefined}
+          />
         ))}
-        {loading && (
-          <div className="flex gap-3">
-            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-muted border border-border text-muted-foreground">
-              <Bot size={14} />
-            </div>
-            <div className="rounded-2xl rounded-tl-sm bg-muted px-3.5 py-2.5 flex items-center gap-2">
-              <Loader2 size={13} className="animate-spin text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">Thinking…</span>
-            </div>
-          </div>
-        )}
         <div ref={bottomRef} />
       </div>
 
@@ -228,10 +295,10 @@ export default function ChatPage() {
             placeholder="Ask about projects, issues, or team…"
             rows={1}
             className="min-h-[40px] max-h-[120px] resize-none text-sm"
-            disabled={loading}
+            disabled={streaming}
             autoFocus
           />
-          <Select value={projectId} onValueChange={handleProjectChange} disabled={loading}>
+          <Select value={projectId} onValueChange={handleProjectChange} disabled={streaming}>
             <SelectTrigger
               aria-label="Project context"
               className="h-10 w-40 shrink-0 text-sm"
@@ -245,15 +312,27 @@ export default function ChatPage() {
               ))}
             </SelectContent>
           </Select>
-          <Button
-            size="icon"
-            aria-label="Send"
-            onClick={() => void send()}
-            disabled={!input.trim() || loading}
-            className="shrink-0 h-10 w-10"
-          >
-            {loading ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
-          </Button>
+          {streaming ? (
+            <Button
+              size="icon"
+              aria-label="Cancel"
+              onClick={cancel}
+              variant="destructive"
+              className="shrink-0 h-10 w-10"
+            >
+              <Square size={14} />
+            </Button>
+          ) : (
+            <Button
+              size="icon"
+              aria-label="Send"
+              onClick={() => void send()}
+              disabled={!input.trim()}
+              className="shrink-0 h-10 w-10"
+            >
+              <Send size={16} />
+            </Button>
+          )}
         </div>
         <p className="mt-1.5 text-[11px] text-muted-foreground">
           Enter to send · Shift+Enter for new line
