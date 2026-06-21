@@ -83,7 +83,7 @@ function MessageBubble({ msg, streamingChips }: {
   const isUser = msg.role === 'user'
   const showChips = !isUser && streamingChips && streamingChips.length > 0
   return (
-    <div className="flex gap-3">
+    <div className="flex gap-3 items-start">
       {/* Avatar */}
       <div className={cn(
         'flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs',

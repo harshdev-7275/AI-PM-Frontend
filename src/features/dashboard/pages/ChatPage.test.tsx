@@ -155,6 +155,27 @@ describe('ChatPage message alignment', () => {
     const userBubble = userText.closest('div[class*="leading-relaxed"]')!
     expect(userBubble.className).not.toMatch(/\bbg-/)
   })
+
+  it('top-aligns the avatar with the message bubble', async () => {
+    const user = userEvent.setup()
+    render(<ChatPage />)
+
+    // The outer row wrapping avatar + bubble must use items-start so the
+    // avatar pins to the top of the (possibly multi-line) message.
+    const welcomeText = await screen.findByText(/Hi! I'm Planiqo Assistant/i)
+    const outerRow = welcomeText.closest('div.flex.gap-3')!
+    expect(outerRow.className).toMatch(/\bitems-start\b/)
+    expect(outerRow.className).not.toMatch(/\bitems-center\b/)
+
+    // Same expectation for the user bubble row.
+    await user.type(screen.getByPlaceholderText(/ask about/i), 'hi')
+    await user.click(screen.getByRole('button', { name: /send/i }))
+
+    const userText = await screen.findByText('hi')
+    const userOuterRow = userText.closest('div.flex.gap-3')!
+    expect(userOuterRow.className).toMatch(/\bitems-start\b/)
+    expect(userOuterRow.className).not.toMatch(/\bitems-center\b/)
+  })
 })
 
 
