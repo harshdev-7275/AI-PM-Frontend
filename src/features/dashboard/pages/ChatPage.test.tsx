@@ -176,6 +176,30 @@ describe('ChatPage message alignment', () => {
     expect(userOuterRow.className).toMatch(/\bitems-start\b/)
     expect(userOuterRow.className).not.toMatch(/\bitems-center\b/)
   })
+
+  it('strips leading whitespace from an assistant reply on done', async () => {
+    // Some reasoning models emit "\n\n" after their think block closes, before
+    // the actual reply. The bubble should never start with blank lines.
+    streamChatMessage.mockImplementation(
+      async (_msg, _projectId, _history, callbacks: {
+        onToken?: (delta: string) => void
+        onDone?:  (message: string, toolCalls: unknown[], model: string, steps: number) => void
+      }) => {
+        callbacks.onToken?.('\n\nHello')
+        callbacks.onDone?.('\n\nHello', [], 'groq:test', 1)
+      },
+    )
+
+    const user = userEvent.setup()
+    render(<ChatPage />)
+    await user.type(screen.getByPlaceholderText(/ask about/i), 'hi')
+    await user.click(screen.getByRole('button', { name: /send/i }))
+
+    // After done, the bubble should contain "Hello" — never a leading newline.
+    const bubble = await screen.findByText('Hello')
+    expect(bubble.textContent).toBe('Hello')
+    expect(bubble.textContent?.startsWith('\n')).toBe(false)
+  })
 })
 
 

@@ -217,7 +217,7 @@ export default function ChatPage() {
         },
         onDone: (message, toolCalls, model, _steps) => {
           setMessages(prev => prev.map(m => m.id === aiMsgId
-            ? { ...m, content: message || m.content, toolCalls, model }
+            ? { ...m, content: message ? message.trimStart() : m.content, toolCalls, model }
             : m,
           ))
         },
