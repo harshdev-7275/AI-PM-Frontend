@@ -50,7 +50,9 @@ export async function sendChatMessage(
     // Localtimeout for the non-streaming chat — fast model responses shouldn't
     // hang indefinitely. Streaming has its own cancel path.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- AbortSignal.timeout is ES2024; lib target doesn't include it
-    signal: (AbortSignal as any).timeout?.(CHAT_TIMEOUT_MS),
+    ...((AbortSignal as any).timeout?.(CHAT_TIMEOUT_MS)
+      ? { signal: (AbortSignal as any).timeout(CHAT_TIMEOUT_MS) }
+      : {}),
   })
   if (!res.ok) {
     throw new Error(`Chat request failed: ${res.status}`)
@@ -177,7 +179,7 @@ export async function streamChatMessage(
         ...(projectId ? { projectId } : {}),
         ...(history.length ? { history } : {}),
       }),
-      signal: options.signal,
+      ...(options.signal ? { signal: options.signal } : {}),
     })
 
   const initialToken = useAuthStore.getState().accessToken

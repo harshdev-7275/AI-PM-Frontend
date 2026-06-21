@@ -20,7 +20,7 @@ const { getState, setAccessToken, mockRefreshToken } = vi.hoisted(() => {
 })
 
 vi.mock('@/store/useAuthStore', () => ({
-  useAuthStore: { getState: (...args: unknown[]) => getState(...args) },
+  useAuthStore: { getState: () => getState() },
 }))
 
 vi.mock('./api', async () => {
