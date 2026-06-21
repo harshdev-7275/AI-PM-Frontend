@@ -200,6 +200,29 @@ describe('ChatPage message alignment', () => {
     expect(bubble.textContent).toBe('Hello')
     expect(bubble.textContent?.startsWith('\n')).toBe(false)
   })
+
+  it('has zero top padding on user and assistant bubbles', async () => {
+    const user = userEvent.setup()
+    render(<ChatPage />)
+
+    // Assistant bubble: bottom padding preserved, no combined py-* (which
+    // would give equal top + bottom), no non-zero pt-*.
+    const welcomeText = await screen.findByText(/Hi! I'm Planiqo Assistant/i)
+    const assistantBubble = welcomeText.closest('div[class*="leading-relaxed"]')!
+    expect(assistantBubble.className).toMatch(/\bpb-2\.5\b/)
+    expect(assistantBubble.className).not.toMatch(/\bpy-\d/)
+    expect(assistantBubble.className).not.toMatch(/\bpt-[1-9]/)
+
+    // Same for the user bubble.
+    await user.type(screen.getByPlaceholderText(/ask about/i), 'hi')
+    await user.click(screen.getByRole('button', { name: /send/i }))
+
+    const userText = await screen.findByText('hi')
+    const userBubble = userText.closest('div[class*="leading-relaxed"]')!
+    expect(userBubble.className).toMatch(/\bpb-2\.5\b/)
+    expect(userBubble.className).not.toMatch(/\bpy-\d/)
+    expect(userBubble.className).not.toMatch(/\bpt-[1-9]/)
+  })
 })
 
 
