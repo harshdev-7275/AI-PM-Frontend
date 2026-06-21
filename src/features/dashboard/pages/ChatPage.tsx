@@ -78,7 +78,7 @@ function ToolCallsDetail({ toolCalls }: { toolCalls: ToolCallRecord[] }) {
 
 function MessageBubble({ msg, streamingChips }: {
   msg: Message
-  streamingChips?: ToolCallChip[]
+  streamingChips?: ToolCallChip[] | undefined
 }) {
   const isUser = msg.role === 'user'
   const showChips = !isUser && streamingChips && streamingChips.length > 0
