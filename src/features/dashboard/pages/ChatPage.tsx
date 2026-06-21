@@ -83,7 +83,7 @@ function MessageBubble({ msg, streamingChips }: {
   const isUser = msg.role === 'user'
   const showChips = !isUser && streamingChips && streamingChips.length > 0
   return (
-    <div className={cn('flex gap-3', isUser && 'flex-row-reverse')}>
+    <div className="flex gap-3">
       {/* Avatar */}
       <div className={cn(
         'flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs',
@@ -95,7 +95,7 @@ function MessageBubble({ msg, streamingChips }: {
       </div>
 
       {/* Bubble */}
-      <div className={cn('max-w-[75%] space-y-1', isUser && 'items-end flex flex-col')}>
+      <div className="max-w-[75%] space-y-1">
         <div className={cn(
           'rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed whitespace-pre-wrap',
           isUser

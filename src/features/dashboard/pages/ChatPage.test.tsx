@@ -117,6 +117,29 @@ describe('ChatPage project scoping', () => {
 })
 
 
+describe('ChatPage message alignment', () => {
+  it('renders user and assistant bubbles both starting from the left', async () => {
+    const user = userEvent.setup()
+    render(<ChatPage />)
+
+    // Welcome (assistant) bubble — left side, no flex-row-reverse.
+    const welcomeText = await screen.findByText(/Hi! I'm Planiqo Assistant/i)
+    const assistantRow = welcomeText.closest('[class*="flex"]')!.parentElement!
+    expect(assistantRow.className).not.toMatch(/flex-row-reverse/)
+    expect(assistantRow.className).not.toMatch(/items-end/)
+
+    // Send a user message and confirm it also stays on the left.
+    await user.type(screen.getByPlaceholderText(/ask about/i), 'hi')
+    await user.click(screen.getByRole('button', { name: /send/i }))
+
+    const userText = await screen.findByText('hi')
+    const userRow = userText.closest('[class*="flex"]')!.parentElement!
+    expect(userRow.className).not.toMatch(/flex-row-reverse/)
+    expect(userRow.className).not.toMatch(/items-end/)
+  })
+})
+
+
 describe('ChatPage streaming UX', () => {
   it('renders streamed tokens incrementally as the assistant bubble grows', async () => {
     // Mock that emits one token, lets React render, then emits the next.
