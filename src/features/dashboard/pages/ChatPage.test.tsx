@@ -137,6 +137,24 @@ describe('ChatPage message alignment', () => {
     expect(userRow.className).not.toMatch(/flex-row-reverse/)
     expect(userRow.className).not.toMatch(/items-end/)
   })
+
+  it('renders both user and assistant bubbles without a background colour', async () => {
+    const user = userEvent.setup()
+    render(<ChatPage />)
+
+    // Assistant bubble has no bg-* class.
+    const welcomeText = await screen.findByText(/Hi! I'm Planiqo Assistant/i)
+    const assistantBubble = welcomeText.closest('div[class*="leading-relaxed"]')!
+    expect(assistantBubble.className).not.toMatch(/\bbg-/)
+
+    // Send a user message — its bubble also has no bg-* class.
+    await user.type(screen.getByPlaceholderText(/ask about/i), 'hi')
+    await user.click(screen.getByRole('button', { name: /send/i }))
+
+    const userText = await screen.findByText('hi')
+    const userBubble = userText.closest('div[class*="leading-relaxed"]')!
+    expect(userBubble.className).not.toMatch(/\bbg-/)
+  })
 })
 
 

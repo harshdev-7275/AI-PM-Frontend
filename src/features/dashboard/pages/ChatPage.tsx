@@ -97,12 +97,8 @@ function MessageBubble({ msg, streamingChips }: {
       {/* Bubble */}
       <div className="max-w-[75%] space-y-1">
         <div className={cn(
-          'rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed whitespace-pre-wrap',
-          isUser
-            ? 'bg-primary text-primary-foreground rounded-tr-sm'
-            : msg.error
-              ? 'bg-destructive/10 text-destructive border border-destructive/20 rounded-tl-sm'
-              : 'bg-muted text-foreground rounded-tl-sm',
+          'px-3.5 py-2.5 text-sm leading-relaxed whitespace-pre-wrap',
+          msg.error ? 'text-destructive' : 'text-foreground',
         )}>
           {msg.content}
         </div>
