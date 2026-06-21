@@ -177,7 +177,7 @@ export async function streamChatMessage(
         ...(projectId ? { projectId } : {}),
         ...(history.length ? { history } : {}),
       }),
-      signal: options.signal,
+      ...(options.signal ? { signal: options.signal } : {}),
     })
 
   const initialToken = useAuthStore.getState().accessToken
