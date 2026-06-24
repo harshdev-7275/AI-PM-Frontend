@@ -83,7 +83,7 @@ function MessageBubble({ msg, streamingChips }: {
   const isUser = msg.role === 'user'
   const showChips = !isUser && streamingChips && streamingChips.length > 0
   return (
-    <div className={cn('flex gap-3', isUser && 'flex-row-reverse')}>
+    <div className="flex gap-3 items-start">
       {/* Avatar */}
       <div className={cn(
         'flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs',
@@ -95,14 +95,10 @@ function MessageBubble({ msg, streamingChips }: {
       </div>
 
       {/* Bubble */}
-      <div className={cn('max-w-[75%] space-y-1', isUser && 'items-end flex flex-col')}>
+      <div className="max-w-[75%] space-y-1">
         <div className={cn(
-          'rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed whitespace-pre-wrap',
-          isUser
-            ? 'bg-primary text-primary-foreground rounded-tr-sm'
-            : msg.error
-              ? 'bg-destructive/10 text-destructive border border-destructive/20 rounded-tl-sm'
-              : 'bg-muted text-foreground rounded-tl-sm',
+          'px-3.5 pb-2.5 text-sm leading-relaxed whitespace-pre-wrap',
+          msg.error ? 'text-destructive' : 'text-foreground',
         )}>
           {msg.content}
         </div>
@@ -221,7 +217,7 @@ export default function ChatPage() {
         },
         onDone: (message, toolCalls, model, _steps) => {
           setMessages(prev => prev.map(m => m.id === aiMsgId
-            ? { ...m, content: message || m.content, toolCalls, model }
+            ? { ...m, content: message ? message.trimStart() : m.content, toolCalls, model }
             : m,
           ))
         },

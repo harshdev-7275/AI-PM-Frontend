@@ -117,6 +117,115 @@ describe('ChatPage project scoping', () => {
 })
 
 
+describe('ChatPage message alignment', () => {
+  it('renders user and assistant bubbles both starting from the left', async () => {
+    const user = userEvent.setup()
+    render(<ChatPage />)
+
+    // Welcome (assistant) bubble — left side, no flex-row-reverse.
+    const welcomeText = await screen.findByText(/Hi! I'm Planiqo Assistant/i)
+    const assistantRow = welcomeText.closest('[class*="flex"]')!.parentElement!
+    expect(assistantRow.className).not.toMatch(/flex-row-reverse/)
+    expect(assistantRow.className).not.toMatch(/items-end/)
+
+    // Send a user message and confirm it also stays on the left.
+    await user.type(screen.getByPlaceholderText(/ask about/i), 'hi')
+    await user.click(screen.getByRole('button', { name: /send/i }))
+
+    const userText = await screen.findByText('hi')
+    const userRow = userText.closest('[class*="flex"]')!.parentElement!
+    expect(userRow.className).not.toMatch(/flex-row-reverse/)
+    expect(userRow.className).not.toMatch(/items-end/)
+  })
+
+  it('renders both user and assistant bubbles without a background colour', async () => {
+    const user = userEvent.setup()
+    render(<ChatPage />)
+
+    // Assistant bubble has no bg-* class.
+    const welcomeText = await screen.findByText(/Hi! I'm Planiqo Assistant/i)
+    const assistantBubble = welcomeText.closest('div[class*="leading-relaxed"]')!
+    expect(assistantBubble.className).not.toMatch(/\bbg-/)
+
+    // Send a user message — its bubble also has no bg-* class.
+    await user.type(screen.getByPlaceholderText(/ask about/i), 'hi')
+    await user.click(screen.getByRole('button', { name: /send/i }))
+
+    const userText = await screen.findByText('hi')
+    const userBubble = userText.closest('div[class*="leading-relaxed"]')!
+    expect(userBubble.className).not.toMatch(/\bbg-/)
+  })
+
+  it('top-aligns the avatar with the message bubble', async () => {
+    const user = userEvent.setup()
+    render(<ChatPage />)
+
+    // The outer row wrapping avatar + bubble must use items-start so the
+    // avatar pins to the top of the (possibly multi-line) message.
+    const welcomeText = await screen.findByText(/Hi! I'm Planiqo Assistant/i)
+    const outerRow = welcomeText.closest('div.flex.gap-3')!
+    expect(outerRow.className).toMatch(/\bitems-start\b/)
+    expect(outerRow.className).not.toMatch(/\bitems-center\b/)
+
+    // Same expectation for the user bubble row.
+    await user.type(screen.getByPlaceholderText(/ask about/i), 'hi')
+    await user.click(screen.getByRole('button', { name: /send/i }))
+
+    const userText = await screen.findByText('hi')
+    const userOuterRow = userText.closest('div.flex.gap-3')!
+    expect(userOuterRow.className).toMatch(/\bitems-start\b/)
+    expect(userOuterRow.className).not.toMatch(/\bitems-center\b/)
+  })
+
+  it('strips leading whitespace from an assistant reply on done', async () => {
+    // Some reasoning models emit "\n\n" after their think block closes, before
+    // the actual reply. The bubble should never start with blank lines.
+    streamChatMessage.mockImplementation(
+      async (_msg, _projectId, _history, callbacks: {
+        onToken?: (delta: string) => void
+        onDone?:  (message: string, toolCalls: unknown[], model: string, steps: number) => void
+      }) => {
+        callbacks.onToken?.('\n\nHello')
+        callbacks.onDone?.('\n\nHello', [], 'groq:test', 1)
+      },
+    )
+
+    const user = userEvent.setup()
+    render(<ChatPage />)
+    await user.type(screen.getByPlaceholderText(/ask about/i), 'hi')
+    await user.click(screen.getByRole('button', { name: /send/i }))
+
+    // After done, the bubble should contain "Hello" — never a leading newline.
+    const bubble = await screen.findByText('Hello')
+    expect(bubble.textContent).toBe('Hello')
+    expect(bubble.textContent?.startsWith('\n')).toBe(false)
+  })
+
+  it('has zero top padding on user and assistant bubbles', async () => {
+    const user = userEvent.setup()
+    render(<ChatPage />)
+
+    // Assistant bubble: bottom padding preserved, no combined py-* (which
+    // would give equal top + bottom), no non-zero pt-*.
+    const welcomeText = await screen.findByText(/Hi! I'm Planiqo Assistant/i)
+    const assistantBubble = welcomeText.closest('div[class*="leading-relaxed"]')!
+    expect(assistantBubble.className).toMatch(/\bpb-2\.5\b/)
+    expect(assistantBubble.className).not.toMatch(/\bpy-\d/)
+    expect(assistantBubble.className).not.toMatch(/\bpt-[1-9]/)
+
+    // Same for the user bubble.
+    await user.type(screen.getByPlaceholderText(/ask about/i), 'hi')
+    await user.click(screen.getByRole('button', { name: /send/i }))
+
+    const userText = await screen.findByText('hi')
+    const userBubble = userText.closest('div[class*="leading-relaxed"]')!
+    expect(userBubble.className).toMatch(/\bpb-2\.5\b/)
+    expect(userBubble.className).not.toMatch(/\bpy-\d/)
+    expect(userBubble.className).not.toMatch(/\bpt-[1-9]/)
+  })
+})
+
+
 describe('ChatPage streaming UX', () => {
   it('renders streamed tokens incrementally as the assistant bubble grows', async () => {
     // Mock that emits one token, lets React render, then emits the next.
