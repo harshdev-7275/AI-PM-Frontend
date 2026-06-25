@@ -68,6 +68,7 @@ export interface StreamCallbacks {
   onToolEnd?:   (toolCallId: string, resultPreview: string | null) => void
   onDone?:      (message: string, toolCalls: ToolCallRecord[], model: string, steps: number) => void
   onError?:     (code: string, message: string) => void
+  onStatus?:    (message: string) => void
 }
 
 export interface StreamOptions {
@@ -87,6 +88,7 @@ interface StreamEvent {
   model?:        string
   steps?:        number
   code?:         string
+  // status event
 }
 
 /**
@@ -142,6 +144,11 @@ function dispatchEvent(event: StreamEvent, callbacks: StreamCallbacks): void {
     case 'error':
       if (callbacks.onError && event.code) {
         callbacks.onError(event.code, event.message ?? '')
+      }
+      break
+    case 'status':
+      if (callbacks.onStatus && typeof event.message === 'string') {
+        callbacks.onStatus(event.message)
       }
       break
   }

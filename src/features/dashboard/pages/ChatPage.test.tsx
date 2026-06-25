@@ -66,7 +66,7 @@ describe('ChatPage project scoping', () => {
     const user = userEvent.setup()
     render(<ChatPage />)
 
-    await user.type(screen.getByPlaceholderText(/ask about/i), 'hello')
+    await user.type(screen.getByPlaceholderText(/ask about anything/i), 'hello')
     await user.click(screen.getByRole('button', { name: /send/i }))
 
     await waitFor(() => expect(streamChatMessage).toHaveBeenCalledTimes(1))
@@ -95,8 +95,7 @@ describe('ChatPage project scoping', () => {
     const user = userEvent.setup()
     render(<ChatPage />)
 
-    const box = screen.getByPlaceholderText(/ask about/i)
-    await user.type(box, 'first')
+    await user.type(screen.getByPlaceholderText(/ask about/i), 'first')
     await user.click(screen.getByRole('button', { name: /send/i }))
     await waitFor(() => expect(streamChatMessage).toHaveBeenCalledTimes(1))
     const [, , firstHistory] = streamChatMessage.mock.calls[0] as [string, string | undefined, unknown[]]
@@ -105,7 +104,8 @@ describe('ChatPage project scoping', () => {
     // Wait for the streamed reply to render before sending the next turn.
     await screen.findByText('Hello world')
 
-    await user.type(box, 'second')
+    // Re-query: the welcome→active layout switch mounts a new textarea.
+    await user.type(screen.getByPlaceholderText(/ask about/i), 'second')
     await user.click(screen.getByRole('button', { name: /send/i }))
     await waitFor(() => expect(streamChatMessage).toHaveBeenCalledTimes(2))
     const [, , secondHistory] = streamChatMessage.mock.calls[1] as [string, string | undefined, unknown[]]
