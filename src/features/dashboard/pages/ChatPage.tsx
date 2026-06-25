@@ -16,7 +16,9 @@ import { cn } from '@/lib/utils'
 import { useProjectStore } from '@/store/useProjectStore'
 import { useAuthStore } from '@/store/useAuthStore'
 import { UserAvatar } from '@/components/UserAvatar'
-import { streamChatMessage, type ToolCallRecord } from '@/services/aiService'
+import { streamChatMessage, fetchSuggestions, type ToolCallRecord } from '@/services/aiService'
+import { useChatSuggestions } from '@/hooks/useChatSuggestions'
+import { useNavStore } from '@/store/useNavStore'
 
 const ALL_PROJECTS = '__all__'
 const MAX_HISTORY_TURNS = 20
@@ -219,8 +221,8 @@ function ToolCallsDetail({ toolCalls }: { toolCalls: ToolCallRecord[] }) {
           {toolCalls.map((tc, i) => (
             <div key={i} className="rounded bg-muted/60 px-2 py-1 font-mono text-[11px] text-muted-foreground">
               <span className="text-foreground font-medium">{tc.tool}</span>
-              {Object.keys(tc.args).length > 0 && (
-                <span className="ml-1 opacity-70">{JSON.stringify(tc.args)}</span>
+              {tc.result_preview && (
+                <span className="ml-1 opacity-60 truncate max-w-[200px] inline-block align-bottom">{tc.result_preview}</span>
               )}
             </div>
           ))}
@@ -255,7 +257,7 @@ function MessageBubble({ msg, userName, userAvatarUrl, userSeed, streamingChips,
     <div className="space-y-1.5">
       <div className="flex items-center gap-2">
         {isUser ? (
-          <UserAvatar name={userName} avatarUrl={userAvatarUrl} seed={userSeed} className="size-7" />
+          <UserAvatar name={userName} {...(userAvatarUrl !== undefined ? { avatarUrl: userAvatarUrl } : {})} {...(userSeed !== undefined ? { seed: userSeed } : {})} className="size-7" />
         ) : (
           <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs bg-muted text-muted-foreground border border-border">
             <Bot size={14} />
@@ -299,8 +301,8 @@ function MessageBubble({ msg, userName, userAvatarUrl, userSeed, streamingChips,
             ? <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
             : <MarkdownMessage
                 content={msg.content}
-                isStreaming={isStreaming}
-                isError={msg.error}
+                {...(isStreaming !== undefined ? { isStreaming } : {})}
+                {...(msg.error !== undefined ? { isError: msg.error } : {})}
               />
         )}
 
@@ -322,9 +324,6 @@ function MessageBubble({ msg, userName, userAvatarUrl, userSeed, streamingChips,
                 title={tc.preview ?? undefined}
               >
                 {tc.tool}
-                {Object.keys(tc.args).length > 0 && (
-                  <span className="opacity-70">{JSON.stringify(tc.args)}</span>
-                )}
               </span>
             ))}
           </div>
@@ -355,6 +354,11 @@ export default function ChatPage() {
   const [statusText,    setStatusText]    = useState<string | null>(null)
   const [projectId,     setProjectId]     = useState<string>(ALL_PROJECTS)
 
+  const { suggestions, setSuggestions } = useChatSuggestions()
+
+  const lastPage      = useNavStore(s => s.lastPage)
+  const lastProjectId = useNavStore(s => s.lastProjectId)
+
   const projects      = useProjectStore(s => s.projects)
   const userName      = useAuthStore(s => s.user?.name ?? 'You')
   const userAvatarUrl = useAuthStore(s => s.user?.avatarUrl ?? null)
@@ -362,7 +366,8 @@ export default function ChatPage() {
 
   const bottomRef   = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
-  const abortRef    = useRef<AbortController | null>(null)
+  const abortRef         = useRef<AbortController | null>(null)
+  const gotSuggestionsRef = useRef(false)
 
   const handleProjectChange = (newId: string) => {
     if (newId === projectId) return
@@ -391,6 +396,8 @@ export default function ChatPage() {
     setStreamingChips([])
     setStreamingAiId(aiMsgId)
     setStatusText(null)
+    setSuggestions([])
+    gotSuggestionsRef.current = false
 
     const ac = new AbortController()
     abortRef.current = ac
@@ -415,6 +422,10 @@ export default function ChatPage() {
         },
         onToolEnd: (id, preview) => {
           setStreamingChips(prev => prev.map(c => c.id === id ? { ...c, state: 'end', preview } : c))
+        },
+        onSuggestions: (chips) => {
+          gotSuggestionsRef.current = true
+          setSuggestions(chips)
         },
         onDone: (message, toolCalls, model, _steps) => {
           setStatusText(null)
@@ -450,6 +461,9 @@ export default function ChatPage() {
       setStatusText(null)
       abortRef.current = null
       textareaRef.current?.focus()
+      if (!gotSuggestionsRef.current) {
+        fetchSuggestions(lastPage, lastProjectId).then(setSuggestions).catch(() => {})
+      }
     }
   }
 
@@ -566,7 +580,7 @@ export default function ChatPage() {
   )
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full flex-col overflow-hidden">
       {/* Header */}
       <div className="flex items-center gap-2 border-b border-border px-6 py-3 shrink-0">
         <Bot size={18} className="text-primary" />
@@ -590,6 +604,31 @@ export default function ChatPage() {
         ))}
         <div ref={bottomRef} />
       </div>
+
+      {/* Suggestion chips — context-aware, shown above input at all times except while streaming */}
+      <AnimatePresence>
+        {!streaming && suggestions.length > 0 && (
+          <motion.div
+            className="shrink-0 px-6 pb-2 flex flex-wrap gap-2 justify-center"
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 6 }}
+            transition={{ duration: 0.18 }}
+          >
+            {suggestions.map(s => (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => void send(s.prompt)}
+                disabled={streaming}
+                className="rounded-full border border-border bg-muted/40 px-3 py-1 text-[11px] text-muted-foreground hover:bg-muted/80 hover:text-foreground transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {s.label}
+              </button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Input */}
       <div className="shrink-0 px-6 py-3">

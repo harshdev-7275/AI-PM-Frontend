@@ -14,6 +14,8 @@ import {
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb'
 import { useOrgStore } from '@/store/useOrgStore'
+import { useNavStore } from '@/store/useNavStore'
+import type { SuggestionPage } from '@/services/aiService'
 import { useProject } from '@/hooks/useProject'
 import { DashboardLoadingSkeleton } from '@/components/blocks/DashboardLoadingSkeleton'
 import { DashboardSidebar } from './components/DashboardSidebar'
@@ -75,18 +77,36 @@ function Topbar() {
 // DASHBOARD LAYOUT
 // =============================================================================
 
+function pageFromPath(pathname: string, projectId: string | undefined): { page: SuggestionPage; projectId?: string } {
+  const pid = projectId ?? undefined
+  if (/\/board$/.test(pathname))     return pid ? { page: 'board',    projectId: pid } : { page: 'board' }
+  if (/\/backlog$/.test(pathname))   return pid ? { page: 'backlog',  projectId: pid } : { page: 'backlog' }
+  if (/\/members$/.test(pathname))   return pid ? { page: 'members',  projectId: pid } : { page: 'members' }
+  if (/\/analytics$/.test(pathname)) return { page: 'analytics' }
+  return { page: 'dashboard' }
+}
+
 export default function DashboardLayout() {
   const [isNewProjectModalOpen, setIsNewProjectModalOpen] = useState(false)
   const [isInitialLoading, setIsInitialLoading] = useState(true)
-  const { slug } = useParams<{ slug: string }>()
+  const { slug, projectId } = useParams<{ slug: string; projectId: string }>()
   const { projects, loadProjects, isLoading } = useProject()
+  const { pathname } = useLocation()
+  const setLastPage = useNavStore((s) => s.setLastPage)
+
+  useEffect(() => {
+    if (pathname.includes('/chat')) return
+    const { page, projectId: pid } = pageFromPath(pathname, projectId)
+    setLastPage(page, pid)
+  }, [pathname, projectId, setLastPage])
 
   // Load projects once when the org slug changes.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (slug && projects.length === 0) {
       void loadProjects(slug).finally(() => setIsInitialLoading(false))
     }
-  }, [slug]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [slug])
 
   // Once projects exist the initial load is over (render-time adjustment)
   if (projects.length > 0 && isInitialLoading) {

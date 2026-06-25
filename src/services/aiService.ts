@@ -59,16 +59,48 @@ export async function sendChatMessage(
 }
 
 // =============================================================================
+// Suggestions
+// =============================================================================
+
+export type SuggestionPage = 'board' | 'backlog' | 'members' | 'analytics' | 'dashboard' | 'chat'
+
+export interface Suggestion {
+  id:        string
+  label:     string
+  prompt:    string
+  projectId?: string
+}
+
+export async function fetchSuggestions(
+  page:       SuggestionPage,
+  projectId?: string,
+): Promise<Suggestion[]> {
+  const token = useAuthStore.getState().accessToken
+  const res = await fetch(`${env.VITE_API_BASE_URL}/ai/suggestions`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ page, ...(projectId ? { projectId } : {}) }),
+  })
+  if (!res.ok) return []
+  const data = await res.json() as { suggestions: Suggestion[] }
+  return data.suggestions ?? []
+}
+
+// =============================================================================
 // Streaming
 // =============================================================================
 
 export interface StreamCallbacks {
-  onToken?:     (delta: string) => void
-  onToolStart?: (tool: string, toolCallId: string, args: Record<string, unknown>) => void
-  onToolEnd?:   (toolCallId: string, resultPreview: string | null) => void
-  onDone?:      (message: string, toolCalls: ToolCallRecord[], model: string, steps: number) => void
-  onError?:     (code: string, message: string) => void
-  onStatus?:    (message: string) => void
+  onToken?:       (delta: string) => void
+  onToolStart?:   (tool: string, toolCallId: string, args: Record<string, unknown>) => void
+  onToolEnd?:     (toolCallId: string, resultPreview: string | null) => void
+  onDone?:        (message: string, toolCalls: ToolCallRecord[], model: string, steps: number) => void
+  onError?:       (code: string, message: string) => void
+  onStatus?:      (message: string) => void
+  onSuggestions?: (suggestions: Pick<Suggestion, 'id' | 'label' | 'prompt'>[]) => void
 }
 
 export interface StreamOptions {
@@ -77,18 +109,18 @@ export interface StreamOptions {
 }
 
 interface StreamEvent {
-  type:          string
-  delta?:        string
-  tool?:         string
-  tool_call_id?: string
-  args?:         Record<string, unknown>
+  type:           string
+  delta?:         string
+  tool?:          string
+  tool_call_id?:  string
+  args?:          Record<string, unknown>
   result_preview?: string | null
-  message?:      string
-  tool_calls?:   ToolCallRecord[]
-  model?:        string
-  steps?:        number
-  code?:         string
-  // status event
+  message?:       string
+  tool_calls?:    ToolCallRecord[]
+  model?:         string
+  steps?:         number
+  code?:          string
+  suggestions?:   Pick<Suggestion, 'id' | 'label' | 'prompt'>[]
 }
 
 /**
@@ -149,6 +181,11 @@ function dispatchEvent(event: StreamEvent, callbacks: StreamCallbacks): void {
     case 'status':
       if (callbacks.onStatus && typeof event.message === 'string') {
         callbacks.onStatus(event.message)
+      }
+      break
+    case 'suggestions':
+      if (callbacks.onSuggestions && Array.isArray(event.suggestions)) {
+        callbacks.onSuggestions(event.suggestions)
       }
       break
   }
