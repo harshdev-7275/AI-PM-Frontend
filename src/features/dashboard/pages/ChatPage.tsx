@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Bot, Send, User, ChevronDown, ChevronUp, Square } from 'lucide-react'
+import { Bot, Send, ChevronDown, ChevronUp, Square } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import {
@@ -11,6 +11,8 @@ import {
 } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 import { useProjectStore } from '@/store/useProjectStore'
+import { useAuthStore } from '@/store/useAuthStore'
+import { UserAvatar } from '@/components/UserAvatar'
 import { streamChatMessage, type ToolCallRecord } from '@/services/aiService'
 
 // Sentinel for "no project" — Radix Select forbids empty-string item values.
@@ -76,33 +78,36 @@ function ToolCallsDetail({ toolCalls }: { toolCalls: ToolCallRecord[] }) {
 // MESSAGE BUBBLE
 // =============================================================================
 
-function MessageBubble({ msg, streamingChips }: {
+function MessageBubble({ msg, userName, userAvatarUrl, userSeed, streamingChips }: {
   msg: Message
+  userName: string
+  userAvatarUrl?: string | null
+  userSeed?: string
   streamingChips?: ToolCallChip[] | undefined
 }) {
   const isUser = msg.role === 'user'
   const showChips = !isUser && streamingChips && streamingChips.length > 0
   return (
-    <div className={cn('flex gap-3', isUser && 'flex-row-reverse')}>
-      {/* Avatar */}
-      <div className={cn(
-        'flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs',
-        isUser
-          ? 'bg-primary text-primary-foreground'
-          : 'bg-muted text-muted-foreground border border-border',
-      )}>
-        {isUser ? <User size={14} /> : <Bot size={14} />}
+    <div className="space-y-1.5">
+      {/* Name + icon header */}
+      <div className="flex items-center gap-2">
+        {isUser ? (
+          <UserAvatar name={userName} avatarUrl={userAvatarUrl} seed={userSeed} className="size-7" />
+        ) : (
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs bg-muted text-muted-foreground border border-border">
+            <Bot size={14} />
+          </div>
+        )}
+        <span className="text-xs font-semibold text-foreground">
+          {isUser ? userName : 'Planiqo AI'}
+        </span>
       </div>
 
-      {/* Bubble */}
-      <div className={cn('max-w-[75%] space-y-1', isUser && 'items-end flex flex-col')}>
+      {/* Content (aligned under the name) */}
+      <div className="max-w-[75%] space-y-1 pl-9">
         <div className={cn(
-          'rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed whitespace-pre-wrap',
-          isUser
-            ? 'bg-primary text-primary-foreground rounded-tr-sm'
-            : msg.error
-              ? 'bg-destructive/10 text-destructive border border-destructive/20 rounded-tl-sm'
-              : 'bg-muted text-foreground rounded-tl-sm',
+          'text-sm leading-relaxed whitespace-pre-wrap',
+          msg.error ? 'text-destructive' : 'text-foreground',
         )}>
           {msg.content}
         </div>
@@ -159,6 +164,9 @@ export default function ChatPage() {
   const [streamingAiId, setStreamingAiId] = useState<string | null>(null)
   const [projectId, setProjectId] = useState<string>(ALL_PROJECTS)
   const projects = useProjectStore(s => s.projects)
+  const userName = useAuthStore(s => s.user?.name ?? 'You')
+  const userAvatarUrl = useAuthStore(s => s.user?.avatarUrl ?? null)
+  const userSeed = useAuthStore(s => s.user?.id ?? 'you')
   const bottomRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const abortRef = useRef<AbortController | null>(null)
@@ -278,6 +286,9 @@ export default function ChatPage() {
           <MessageBubble
             key={msg.id}
             msg={msg}
+            userName={userName}
+            userAvatarUrl={userAvatarUrl}
+            userSeed={userSeed}
             streamingChips={msg.id === streamingAiId ? visibleChips : undefined}
           />
         ))}

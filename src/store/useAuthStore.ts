@@ -12,6 +12,7 @@ interface AuthState {
 interface AuthActions {
   setAuth:        (user: User, accessToken: string) => void
   setAccessToken: (accessToken: string) => void
+  setUser:        (user: User) => void
   clearAuth:      () => void
 }
 
@@ -26,6 +27,8 @@ export const useAuthStore = create<AuthState & AuthActions>((set) => ({
 
   setAccessToken: (accessToken) =>
     set({ accessToken }),
+
+  setUser: (user) => set({ user }),
 
   clearAuth: () => {
     useOrgStore.getState().clearOrgs()

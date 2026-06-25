@@ -346,6 +346,40 @@ export const getMe = async (accessToken: string): Promise<User> => {
 }
 
 // =============================================================================
+// AVATAR UPLOAD
+// =============================================================================
+
+const AvatarUploadUrlSchema = z.object({
+  uploadUrl: z.string().url(),
+  key:       z.string(),
+})
+
+/** Ask the backend for a presigned PUT URL to upload an avatar to R2. */
+export const getAvatarUploadUrl = async (
+  contentType: string,
+): Promise<{ uploadUrl: string; key: string }> => {
+  const res = await api.post('/me/avatar/upload-url', { contentType })
+  return AvatarUploadUrlSchema.parse(res.data)
+}
+
+/**
+ * Upload the file bytes straight to R2 via the presigned URL. This bypasses
+ * our axios instance (no auth header / baseURL) — it's a direct PUT to R2.
+ */
+export const uploadAvatarToR2 = async (uploadUrl: string, file: File): Promise<void> => {
+  await axios.put(uploadUrl, file, {
+    headers: { 'Content-Type': file.type },
+    withCredentials: false,
+  })
+}
+
+/** Persist the uploaded avatar key (or null to remove) and get the updated user. */
+export const updateAvatar = async (avatarKey: string | null): Promise<User> => {
+  const res = await api.patch('/me', { avatarKey })
+  return UserSchema.parse(res.data)
+}
+
+// =============================================================================
 // ORGS
 // =============================================================================
 
