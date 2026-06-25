@@ -1,6 +1,9 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, useMemo, memo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Bot, Send, ChevronDown, ChevronUp, Square, Sparkles, Paperclip, Globe, Lightbulb, FileText, BarChart2, Zap } from 'lucide-react'
+import { Bot, Send, ChevronDown, ChevronUp, Square, Sparkles, Paperclip, Globe, Lightbulb, FileText } from 'lucide-react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
+import rehypeHighlight from 'rehype-highlight'
 import { Textarea } from '@/components/ui/textarea'
 import {
   Select,
@@ -37,52 +40,6 @@ interface Message {
   toolCalls?: ToolCallRecord[]
   model?:     string
   error?:     boolean
-}
-
-// =============================================================================
-// SUGGESTION CARDS (shown in welcome state)
-// =============================================================================
-
-const SUGGESTIONS = [
-  {
-    icon:  BarChart2,
-    title: 'Synthesize Data',
-    desc:  'Turn my project data into key bullet points for the team.',
-  },
-  {
-    icon:  Lightbulb,
-    title: 'Sprint Overview',
-    desc:  'Summarize the current sprint status and blockers.',
-  },
-  {
-    icon:  Zap,
-    title: 'Check Issues',
-    desc:  'List all open high-priority issues across projects.',
-  },
-]
-
-// =============================================================================
-// GLOW ORB
-// =============================================================================
-
-function GlowOrb() {
-  return (
-    <div className="relative w-32 h-32 mx-auto mb-6">
-      <div className="absolute -inset-6 rounded-full bg-purple-400/15 blur-3xl animate-pulse" />
-      <div
-        className="absolute inset-0 rounded-full"
-        style={{
-          background: 'radial-gradient(circle at 35% 32%, #f3e8ff, #c084fc 40%, #9333ea 68%, #581c87)',
-          boxShadow: '0 0 48px 12px rgba(168,85,247,0.35), inset 0 0 20px rgba(255,255,255,0.08)',
-        }}
-      />
-      <div
-        className="absolute top-3 left-5 w-10 h-6 rounded-full bg-white/50 blur-md"
-        style={{ transform: 'rotate(-18deg)' }}
-      />
-      <div className="absolute top-5 left-6 w-4 h-3 rounded-full bg-white/70 blur-sm" />
-    </div>
-  )
 }
 
 // =============================================================================
@@ -123,6 +80,124 @@ function ThinkingDots() {
     </motion.div>
   )
 }
+
+// =============================================================================
+// MARKDOWN MESSAGE
+// Memoized so a streaming content string only re-renders the component when
+// the actual text changes — prevents O(n²) re-parsing on every token delta.
+// User messages are plain text; only assistant messages go through markdown.
+// =============================================================================
+
+/**
+ * Close any dangling markdown syntax before the model finishes streaming.
+ * react-markdown renders broken output for unclosed `**`, backticks, etc.
+ * We auto-close them for rendering without mutating the real content string.
+ */
+function closePendingMarkdown(text: string): string {
+  let out = text
+  // Unclosed fenced code block
+  const fenceMatches = (out.match(/^```/gm) ?? []).length
+  if (fenceMatches % 2 !== 0) out += '\n```'
+  // Unclosed bold **
+  const boldMatches = (out.match(/\*\*/g) ?? []).length
+  if (boldMatches % 2 !== 0) out += '**'
+  // Unclosed inline code `
+  const codeMatches = (out.match(/(?<!`)`(?!`)/g) ?? []).length
+  if (codeMatches % 2 !== 0) out += '`'
+  return out
+}
+
+const MD_COMPONENTS: React.ComponentProps<typeof ReactMarkdown>['components'] = {
+  // Headings — H1/H2 are disallowed by the prompt, but cap anyway
+  h1: ({ children }) => <p className="text-sm font-bold text-foreground mt-3 mb-1">{children}</p>,
+  h2: ({ children }) => <p className="text-sm font-bold text-foreground mt-3 mb-1">{children}</p>,
+  h3: ({ children }) => <p className="text-[13px] font-semibold text-foreground mt-3 mb-1">{children}</p>,
+  // Paragraphs
+  p:  ({ children }) => <p className="text-sm leading-relaxed mb-2 last:mb-0">{children}</p>,
+  // Lists
+  ul: ({ children }) => <ul className="text-sm list-disc pl-4 mb-2 space-y-0.5 last:mb-0">{children}</ul>,
+  ol: ({ children }) => <ol className="text-sm list-decimal pl-4 mb-2 space-y-0.5 last:mb-0">{children}</ol>,
+  li: ({ children }) => <li className="leading-relaxed">{children}</li>,
+  // Bold / italic
+  strong: ({ children }) => <strong className="font-semibold text-foreground">{children}</strong>,
+  em:     ({ children }) => <em className="italic">{children}</em>,
+  // Tables (GFM)
+  table: ({ children }) => (
+    <div className="overflow-x-auto mb-2 last:mb-0">
+      <table className="text-xs w-full border-collapse">{children}</table>
+    </div>
+  ),
+  thead: ({ children }) => <thead className="bg-muted/60">{children}</thead>,
+  th:    ({ children }) => <th className="border border-border px-2 py-1 text-left font-semibold text-foreground">{children}</th>,
+  td:    ({ children }) => <td className="border border-border px-2 py-1 text-muted-foreground">{children}</td>,
+  // Inline code
+  code: ({ children, className }) => {
+    const isBlock = className?.startsWith('language-')
+    if (isBlock) {
+      return (
+        <code className={cn('block text-xs leading-relaxed', className)}>
+          {children}
+        </code>
+      )
+    }
+    return (
+      <code className="rounded bg-muted px-1 py-0.5 text-[11px] font-mono text-foreground">
+        {children}
+      </code>
+    )
+  },
+  // Code block wrapper
+  pre: ({ children }) => (
+    <pre className="rounded-lg bg-muted/80 border border-border p-3 text-xs overflow-x-auto mb-2 last:mb-0 font-mono">
+      {children}
+    </pre>
+  ),
+  // Blockquote
+  blockquote: ({ children }) => (
+    <blockquote className="border-l-2 border-purple-400 pl-3 text-sm text-muted-foreground italic mb-2 last:mb-0">
+      {children}
+    </blockquote>
+  ),
+  // Horizontal rule
+  hr: () => <hr className="border-border my-2" />,
+  // Links — open externally, never internal navigation
+  a: ({ href, children }) => (
+    <a href={href} target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-2 hover:opacity-80">
+      {children}
+    </a>
+  ),
+}
+
+const MarkdownMessage = memo(function MarkdownMessage({
+  content,
+  isStreaming,
+  isError,
+}: {
+  content:     string
+  isStreaming?: boolean
+  isError?:    boolean
+}) {
+  // While streaming, auto-close dangling syntax so react-markdown doesn't
+  // render broken output (e.g. half-written **bold or unclosed ``` fences).
+  const safeContent = useMemo(
+    () => isStreaming ? closePendingMarkdown(content) : content,
+    [content, isStreaming],
+  )
+
+  if (isError) {
+    return <p className="text-sm text-destructive leading-relaxed">{content}</p>
+  }
+
+  return (
+    <ReactMarkdown
+      remarkPlugins={[remarkGfm]}
+      rehypePlugins={[rehypeHighlight]}
+      components={MD_COMPONENTS}
+    >
+      {safeContent}
+    </ReactMarkdown>
+  )
+})
 
 // =============================================================================
 // TOOL CALLS DISCLOSURE
@@ -218,14 +293,15 @@ function MessageBubble({ msg, userName, userAvatarUrl, userSeed, streamingChips,
           )}
         </AnimatePresence>
 
-        {/* Message content */}
+        {/* Message content — plain text for user, markdown for assistant */}
         {msg.content && (
-          <div className={cn(
-            'text-sm leading-relaxed whitespace-pre-wrap',
-            msg.error ? 'text-destructive' : 'text-foreground',
-          )}>
-            {msg.content}
-          </div>
+          isUser
+            ? <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+            : <MarkdownMessage
+                content={msg.content}
+                isStreaming={isStreaming}
+                isError={msg.error}
+              />
         )}
 
         {/* Live tool chips during streaming */}
@@ -271,11 +347,9 @@ function MessageBubble({ msg, userName, userAvatarUrl, userSeed, streamingChips,
 // =============================================================================
 
 export default function ChatPage() {
-  const [messages, setMessages] = useState<Message[]>([
-    { id: 'welcome', role: 'assistant', content: '' },
-  ])
+  const [messages,      setMessages]      = useState<Message[]>([])
   const [input,         setInput]         = useState('')
-  const [streaming,     setStreaming]     = useState(false)
+  const [streaming,     setStreaming]      = useState(false)
   const [streamingChips, setStreamingChips] = useState<ToolCallChip[]>([])
   const [streamingAiId, setStreamingAiId] = useState<string | null>(null)
   const [statusText,    setStatusText]    = useState<string | null>(null)
@@ -285,18 +359,15 @@ export default function ChatPage() {
   const userName      = useAuthStore(s => s.user?.name ?? 'You')
   const userAvatarUrl = useAuthStore(s => s.user?.avatarUrl ?? null)
   const userSeed      = useAuthStore(s => s.user?.id ?? 'you')
-  const firstName     = userName.split(' ')[0]
 
   const bottomRef   = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const abortRef    = useRef<AbortController | null>(null)
 
-  const isWelcomeState = messages.length === 1 && messages[0].id === 'welcome'
-
   const handleProjectChange = (newId: string) => {
     if (newId === projectId) return
     setProjectId(newId)
-    setMessages([{ id: 'welcome', role: 'assistant', content: '' }])
+    setMessages([])
   }
 
   useEffect(() => {
@@ -326,7 +397,7 @@ export default function ChatPage() {
 
     const scoped  = projectId === ALL_PROJECTS ? undefined : projectId
     const history = messages
-      .filter(m => m.id !== 'welcome' && !m.error)
+      .filter(m => !m.error)
       .slice(-MAX_HISTORY_TURNS)
       .map(m => ({ role: m.role, content: m.content }))
 
@@ -391,7 +462,6 @@ export default function ChatPage() {
 
   const visibleChips = streamingAiId ? streamingChips : []
 
-  // Shared input card rendered in both welcome and active states
   const inputCard = (
     <div className="rounded-2xl border border-border bg-background shadow-sm overflow-hidden">
       <Textarea
@@ -400,7 +470,7 @@ export default function ChatPage() {
         onChange={e => setInput(e.target.value)}
         onKeyDown={onKeyDown}
         placeholder="Ask about anything — projects, issues, or team…"
-        rows={isWelcomeState ? 2 : 1}
+        rows={1}
         className="border-0 shadow-none resize-none bg-transparent focus-visible:ring-0 focus-visible:outline-none min-h-[52px] max-h-[120px] px-4 pt-3 pb-1 text-sm"
         disabled={streaming}
         autoFocus
@@ -504,66 +574,27 @@ export default function ChatPage() {
         <span className="ml-auto text-[11px] text-muted-foreground">Beta</span>
       </div>
 
-      {isWelcomeState ? (
-        /* ── Welcome / empty state ─────────────────────────────────── */
-        <div className="flex-1 flex flex-col items-center justify-center px-6 pb-8 overflow-y-auto">
-          <GlowOrb />
-          <p className="text-2xl font-semibold text-purple-500 mb-1">
-            Hello, {firstName}!
-          </p>
-          <p className="text-xl font-bold text-foreground mb-8">
-            How can I assist you today?
-          </p>
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+        {messages.map(msg => (
+          <MessageBubble
+            key={msg.id}
+            msg={msg}
+            userName={userName}
+            userAvatarUrl={userAvatarUrl}
+            userSeed={userSeed}
+            streamingChips={msg.id === streamingAiId ? visibleChips : undefined}
+            isStreaming={msg.id === streamingAiId}
+            statusText={msg.id === streamingAiId ? statusText : null}
+          />
+        ))}
+        <div ref={bottomRef} />
+      </div>
 
-          <div className="w-full max-w-2xl space-y-4">
-            {inputCard}
-
-            {/* Suggestion cards */}
-            <div className="grid grid-cols-3 gap-3">
-              {SUGGESTIONS.map(s => (
-                <button
-                  key={s.title}
-                  type="button"
-                  onClick={() => {
-                    setInput(s.desc)
-                    textareaRef.current?.focus()
-                  }}
-                  className="text-left rounded-xl border border-border bg-background p-4 hover:bg-muted/50 transition-colors"
-                >
-                  <s.icon size={18} className="text-muted-foreground mb-2.5" />
-                  <p className="text-sm font-semibold text-foreground mb-0.5">{s.title}</p>
-                  <p className="text-xs text-muted-foreground leading-relaxed">{s.desc}</p>
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      ) : (
-        /* ── Active chat state ─────────────────────────────────────── */
-        <>
-          <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
-            {messages
-              .filter(m => m.id !== 'welcome')
-              .map(msg => (
-                <MessageBubble
-                  key={msg.id}
-                  msg={msg}
-                  userName={userName}
-                  userAvatarUrl={userAvatarUrl}
-                  userSeed={userSeed}
-                  streamingChips={msg.id === streamingAiId ? visibleChips : undefined}
-                  isStreaming={msg.id === streamingAiId}
-                  statusText={msg.id === streamingAiId ? statusText : null}
-                />
-              ))}
-            <div ref={bottomRef} />
-          </div>
-
-          <div className="shrink-0 px-6 py-3">
-            {inputCard}
-          </div>
-        </>
-      )}
+      {/* Input */}
+      <div className="shrink-0 px-6 py-3">
+        {inputCard}
+      </div>
     </div>
   )
 }
